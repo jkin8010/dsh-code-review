@@ -28,10 +28,14 @@ let route = null;
 const effects = [];
 const logs = [];
 let fixSessionPrompt = '';
+let registeredCommand = null;
 const scope = {
   get: (service) => {
     if (service === 'connection') {
       return { fetch: { register: (config) => { route = config; return () => { route = null; }; } } };
+    }
+    if (service === 'commands') {
+      return { register: (definition) => { registeredCommand = definition; return () => { registeredCommand = null; }; } };
     }
     if (service === 'sessionController') {
       return {
@@ -244,6 +248,51 @@ assert.equal(fix.prompted, true);
 assert.ok(fixSessionPrompt.includes('代码修复助手'));
 assert.ok(fixSessionPrompt.includes('修复'));
 assert.ok(fixSessionPrompt.includes('changed-proj') || fixSessionPrompt.length > 200);
+
+// --- 4d. slash command /code-review --------------------------------------
+assert.ok(registeredCommand, 'the code-review command must register on the commands service');
+assert.equal(registeredCommand.name, 'code-review');
+assert.equal(typeof registeredCommand.handler, 'function');
+
+const cmdRepo = join(adHocRoot, 'cmd-project');
+await mkdir(cmdRepo, { recursive: true });
+execFileSync('git', ['init', '-q'], { cwd: cmdRepo });
+execFileSync('git', ['config', 'user.email', 't@t'], { cwd: cmdRepo });
+execFileSync('git', ['config', 'user.name', 't'], { cwd: cmdRepo });
+await writeFile(join(cmdRepo, 'main.py'), 'def hello():\n    return 1\n');
+execFileSync('git', ['add', '.'], { cwd: cmdRepo });
+execFileSync('git', ['commit', '-qm', 'init'], { cwd: cmdRepo });
+const invocation = (rawInput, cwd = PLUGIN) => ({ agent: { session: { header: { cwd } } }, rawInput });
+
+const cmdResult = await registeredCommand.handler(invocation(`workflow @${cmdRepo}`));
+assert.equal(cmdResult.kind, 'success', cmdResult.text);
+assert.match(cmdResult.text, /评审完成/);
+assert.ok(cmdResult.text.includes('完整详情'));
+const cmdSnapshot = await rpc('snapshot', {});
+assert.ok(cmdSnapshot.projects.some((project) => project.path === cmdRepo),
+  'an @path passed to /code-review must be added to the project list');
+
+const cmdFixResult = await registeredCommand.handler(invocation('architecture --fix'));
+assert.equal(cmdFixResult.kind, 'success', cmdFixResult.text);
+assert.match(cmdFixResult.text, /修复 Session/);
+assert.match(cmdFixResult.text, /session-fix-test/);
+
+const cmdAsync = await registeredCommand.handler(invocation('module host --async'));
+assert.equal(cmdAsync.kind, 'success');
+assert.match(cmdAsync.text, /已启动/);
+
+const cmdList = await registeredCommand.handler(invocation('list 5'));
+assert.equal(cmdList.kind, 'success');
+assert.match(cmdList.text, /次评审/);
+const cmdStatus = await registeredCommand.handler(invocation('status'));
+assert.equal(cmdStatus.kind, 'success');
+assert.match(cmdStatus.text, /评审/);
+const cmdBad = await registeredCommand.handler(invocation('workflow --bogus'));
+assert.equal(cmdBad.kind, 'error');
+assert.match(cmdBad.text, /未知选项/);
+const cmdHelp = await registeredCommand.handler(invocation('help'));
+assert.equal(cmdHelp.kind, 'success');
+assert.match(cmdHelp.text, /workflow/);
 
 // --- 5. job listing, cancel and retry wiring ------------------------------
 const after = await snapshot();

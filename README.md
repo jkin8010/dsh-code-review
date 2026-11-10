@@ -122,6 +122,28 @@ Agent 会调用 `code_review` → `start`（默认等待评审完成）→ 在�
 
 > 不想要等待时可说「后台跑，跑完告诉我」，Agent 会用 `wait:false`，之后再用 `status`/`detail` 取结果。
 
+### 斜杠命令 `/code-review`
+
+除了让 Agent 调用工具，也可以直接在输入框使用斜杠命令（参考 ocr CLI 的评审类型）：
+
+```text
+/code-review workflow @test/                 # 把 test/ 添加为项目，跑信息流评审
+/code-review workflow --fix @test/           # 同上，完成后自动新建修复 Session
+/code-review architecture @/Users/me/proj    # 项目架构
+/code-review module src/server,src/db --fix  # 代码模块 + 修复会话
+/code-review changes --effort high           # 当前改动
+/code-review commit abc123
+/code-review range main feature/login
+/code-review fix                             # 为最近一次评审新建修复会话
+/code-review list / status [jobId]
+```
+
+- `@路径` 或 `--project 路径`：**项目还没加入列表时也能用**——命令会先添加为项目，再执行评审；
+  相对路径按当前会话目录解析
+- `--fix`：评审完成后自动在项目目录新建修复 Session 并发送 findings
+- `--async`：启动后立即返回；`--effort` / `--background` / `--exclude` / `--budget` 对应评审选项
+- 不带子命令或 `help` 显示完整用法
+
 ### 在页面里使用
 
 1. 左侧栏打开「代码评审中心」，在顶部选择项目（`projectRoots` 自动发现 + `extraProjects`）。

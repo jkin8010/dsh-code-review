@@ -42,6 +42,25 @@ DSH 左侧栏入口 + 整页**代码评审工作台**：把 [alibaba/open-code-r
 Agent 会启动真实评审（默认等待完成）并把问题摘要与 findings 返回在对话里；完整详情在侧栏页面。
 `action=status/detail/list` 可查询进度与历史，`wait:false` 可后台执行后再取结果。
 
+## 斜杠命令 `/code-review`
+
+在项目对话里可直接使用（参考 ocr CLI 评审类型）：
+
+```text
+/code-review workflow @test/
+/code-review workflow --fix @test/
+/code-review architecture
+/code-review module host,client --fix
+/code-review changes --effort high
+/code-review commit <sha>
+/code-review range main feature/x
+/code-review fix [jobId]
+/code-review list | status [jobId]
+```
+
+`@path` / `--project` 会先把项目加入项目列表再评审（未配置项目也能用），相对路径按会话 cwd 解析；
+`--fix` 评审后自动新建修复 Session；`--async` 立即返回。
+
 ## 一键修复 Session
 
 评审详情页提供「新建修复 Session」：调用 Host 的 `sessionController.create({ cwd })` 在项目目录创建会话，

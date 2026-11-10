@@ -388,6 +388,18 @@ export function createSnapshot({ config, store, jobs, git, ocr, logger }) -> { b
 
 错误：`{ ok:false, error:{ code:'code-review/<slug>', message } }`，不抛异常给客户端。
 
+### 斜杠命令 `code-review`
+
+Host 通过 `ctx.commands.register` 注册全局命令：
+
+```text
+/code-review <changes|commit|range|architecture|module|workflow|fix|list|status|help> [@项目路径] [选项]
+选项：--fix --async --project <path> --effort <low|medium|high> --background <text> --exclude <globs> --budget <n>
+```
+- `@path` / `--project`：先用 `snapshot.addProjectPath()` 加入项目（持久化），再用 `jobs.start` 评审
+- 默认等待评审结束（≤10min）并返回摘要/findings；`--fix` 调 `createFixSessionForJob`
+- handler 返回 `{ kind:'success'|'error', text }`；解析失败返回错误 + 用法
+
 ### 模型工具 `code_review`
 
 Host 通过 `ctx.tools.register` 注册（无 tools 服务的 profile 自动跳过），用于项目对话内触发评审：
