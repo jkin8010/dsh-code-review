@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     // 1. 常量 / 字典
     // =====================================================================
 
-    const PLUGIN_VERSION = '0.3.0';
+    const PLUGIN_VERSION = '0.3.1';
     const ENDPOINT = 'code-review';
     const PANEL_ID = 'code-review';
     const PANEL_ORDER = 24;
@@ -1414,12 +1414,14 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       const spec = props || {};
       const [path, setPath] = React.useState('');
       const [busy, setBusy] = React.useState(false);
+      const [picking, setPicking] = React.useState(false);
       const [error, setError] = React.useState('');
       React.useEffect(() => {
         if (spec.open) {
           setPath('');
           setError('');
           setBusy(false);
+          setPicking(false);
         }
       }, [spec.open]);
       if (!spec.open) return null;
@@ -1438,11 +1440,24 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
           setBusy(false);
         }
       };
+      const pickFolder = async () => {
+        if (!spec.onPick || picking || busy) return;
+        setPicking(true);
+        setError('');
+        try {
+          const value = await spec.onPick();
+          if (value) setPath(value);
+        } catch (cause) {
+          setError(errorText(cause));
+        } finally {
+          setPicking(false);
+        }
+      };
       return h(Modal, {
         open: spec.open,
         onClose: busy ? null : spec.onClose,
         title: '添加项目',
-        subtitle: '输入项目目录的绝对路径；添加后会持久化，并出现在项目列表与新建评审里',
+        subtitle: '可直接输入路径，也可用系统文件夹对话框选择；添加后会持久化并出现在项目列表与新建评审里',
         footer: [
           h('span', { key: 'hint', className: 'cr-grow cr-hint' }, '支持 Git 仓库或普通目录 · 已评审项目与 DSH 工作区会自动出现'),
           h('button', { key: 'cancel', type: 'button', className: 'cr-btn is-ghost', onClick: spec.onClose, disabled: busy }, '取消'),
@@ -1452,15 +1467,21 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         children: [
           h('div', { key: 'path', className: 'cr-field' },
             h('span', { className: 'cr-label' }, h(Icon, { name: 'folder', size: 11 }), '项目路径'),
-            h('input', {
-              className: 'cr-input',
-              value: path,
-              autoFocus: true,
-              placeholder: '/Users/you/workspace/project',
-              onChange: (event) => setPath(event.target.value),
-              onKeyDown: (event) => { if (event.key === 'Enter') submit(); },
-              disabled: busy,
-            })),
+            h('div', { style: { display: 'flex', gap: 8, alignItems: 'stretch' } },
+              h('input', {
+                className: 'cr-input',
+                value: path,
+                autoFocus: true,
+                placeholder: '/Users/you/workspace/project',
+                style: { flex: '1 1 auto', minWidth: 0 },
+                onChange: (event) => setPath(event.target.value),
+                onKeyDown: (event) => { if (event.key === 'Enter') submit(); },
+                disabled: busy || picking,
+              }),
+              spec.onPick ? h('button', {
+                type: 'button', className: 'cr-btn is-sm', style: { flex: '0 0 auto', height: 32 },
+                onClick: pickFolder, disabled: busy || picking, title: '打开系统文件夹对话框',
+              }, h(Icon, { name: picking ? 'clock' : 'folder', size: 12 }), picking ? '选择中…' : '选择文件夹…') : null)),
           error ? h('div', { key: 'error', className: 'cr-hint', style: { color: '#ff9aa4', marginTop: 8 } }, error) : null,
         ],
       });
@@ -3128,6 +3149,10 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       const [budget, setBudget] = React.useState('0');
       const [submitting, setSubmitting] = React.useState(false);
 
+      React.useEffect(() => {
+        if (defaultProjectId) setProjectId(defaultProjectId);
+      }, [defaultProjectId]);
+
       const needsPaths = type === 'module' || type === 'flow';
       const submit = async () => {
         if (submitting) return;
@@ -3192,9 +3217,20 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
               h('div', { className: 'cr-select', style: { width: '100%' } },
                 h('select', {
                   value: str(project.id),
-                  onChange: (event) => setProjectId(event.target.value),
+                  onChange: (event) => {
+                    const value = str(event.target.value);
+                    if (value === '__add__') {
+                      event.target.value = str(project.id);
+                      if (spec.onAddProject) spec.onAddProject();
+                      return;
+                    }
+                    setProjectId(value);
+                  },
                   style: { width: '100%' },
-                }, projects.map((item) => h('option', { key: str(item.id), value: str(item.id) }, `${item.name} · ${str(item.branch, '—')}`))),
+                }, (projects.length
+                  ? projects.map((item) => h('option', { key: str(item.id), value: str(item.id) }, `${item.name} · ${str(item.branch, '—')}`))
+                  : [h('option', { key: 'empty', value: '' }, '未发现项目')])
+                  .concat([h('option', { key: '__add__', value: '__add__' }, '＋ 添加项目路径…')])),
                 h(Icon, { name: 'chevronDown', size: 12 }))),
             h('div', { className: 'cr-field' },
               h('span', { className: 'cr-label' }, h(Icon, { name: 'file', size: 11 }), '仓库'),
@@ -3656,6 +3692,12 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         return next;
       }, [rpc, pushToast, refresh]);
 
+      const pickProjectPath = React.useCallback(async () => {
+        const envelope = await rpc('project.pick', {});
+        const payload = unwrapEnvelope(envelope, (value) => Boolean(value && typeof value.path !== 'undefined'));
+        return payload && payload.path ? str(payload.path) : '';
+      }, [rpc]);
+
       const openJob = React.useCallback((id) => {
         const jobId = str(id);
         if (!jobId) return;
@@ -3774,6 +3816,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             snapshot,
             connection,
             defaultProjectId: str(obj(currentProject).id),
+            onAddProject: () => setAddProjectOpen(true),
             onClose: () => setLaunchOpen(false),
             onStarted: () => {
               setLaunchOpen(false);
@@ -3785,6 +3828,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             open: addProjectOpen,
             onClose: () => setAddProjectOpen(false),
             onSubmit: addProject,
+            onPick: pickProjectPath,
           }),
           settingsOpen ? h(SettingsDrawer, {
             snapshot,

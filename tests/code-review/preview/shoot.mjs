@@ -242,6 +242,12 @@ async function main() {
   }
   const modal = await page.$('.cr-modal');
   const typeCards = await page.$$eval('.cr-type-card', (nodes) => nodes.length);
+  const launchAddOptions = await page.$$eval('.cr-modal select option', (nodes) => nodes.filter((node) => node.value === '__add__').length);
+  if (launchAddOptions < 1) {
+    results[results.length - 1].issues.push('新建评审的项目下拉缺少“添加项目路径”选项');
+    results[results.length - 1].ok = false;
+    failed = true;
+  }
   if (!modal || typeCards !== 6) {
     results[results.length - 1].issues.push(`新建评审弹层异常：modal=${Boolean(modal)} typeCards=${typeCards}`);
     results[results.length - 1].ok = false;
@@ -268,6 +274,37 @@ async function main() {
   }
   results[results.length - 1].miniCells = miniCells;
   await shoot('projects');
+
+  // -- add project dialog (folder picker + manual input) --------------------
+  await page.evaluate(() => {
+    const button = [...document.querySelectorAll('button')]
+      .find((node) => node.textContent.includes('添加项目') && node.closest('.cr-card'));
+    if (button) button.click();
+  });
+  await page.waitForSelector('.cr-modal input.cr-input', { timeout: 8000 });
+  const hasPickerButton = await page.evaluate(() => [...document.querySelectorAll('.cr-modal button')]
+    .some((node) => node.textContent.includes('选择文件夹')));
+  if (!hasPickerButton) {
+    results.push({ view: 'add-project', ok: false, issues: ['添加项目弹层缺少“选择文件夹”按钮'] });
+    failed = true;
+  } else {
+    await page.evaluate(() => {
+      const button = [...document.querySelectorAll('.cr-modal button')]
+        .find((node) => node.textContent.includes('选择文件夹'));
+      if (button) button.click();
+    });
+    try {
+      await page.waitForFunction(() => {
+        const input = document.querySelector('.cr-modal input.cr-input');
+        return Boolean(input && input.value && input.value.includes('synapse-router'));
+      }, { timeout: 8000 });
+      results.push({ view: 'add-project', ok: true, issues: [] });
+    } catch (error) {
+      results.push({ view: 'add-project', ok: false, issues: [`文件夹选择未回填路径：${error.message}`] });
+      failed = true;
+    }
+    await page.screenshot({ path: join(SHOTS, 'code-review-add-project.png'), fullPage: false, animations: 'disabled' });
+  }
 
   // -- architecture --------------------------------------------------------
   await openView('architecture');

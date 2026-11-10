@@ -28,9 +28,20 @@ let route = null;
 const effects = [];
 const logs = [];
 const scope = {
-  get: (service) => (service === 'connection'
-    ? { fetch: { register: (config) => { route = config; return () => { route = null; }; } } }
-    : undefined),
+  get: (service) => {
+    if (service === 'connection') {
+      return { fetch: { register: (config) => { route = config; return () => { route = null; }; } } };
+    }
+    if (service === 'directoryPicker') {
+      return {
+        capability: () => ({
+          kind: 'native',
+          pick: async () => '/tmp/picked-from-stub',
+        }),
+      };
+    }
+    return undefined;
+  },
   effect: (factory) => {
     const disposer = factory();
     if (typeof disposer === 'function') effects.push(disposer);
@@ -210,6 +221,9 @@ const refreshed = await rpc('snapshot', {});
 assert.ok(refreshed.projects.some((project) => project.path === reviewedRepo),
   'a reviewed ad-hoc project must stay in the project list after refresh');
 assert.ok(refreshed.stats.byProject.some((item) => item.projectId === projectId(reviewedRepo)));
+
+const picked = await rpc('project.pick', {});
+assert.equal(picked.path, '/tmp/picked-from-stub', 'project.pick must return the picker path');
 
 const removed = await rpc('project.remove', { path: addedRepo });
 assert.equal(removed.ok, true);

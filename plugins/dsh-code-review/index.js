@@ -263,6 +263,22 @@ export function apply(ctx, rawConfig) {
         return { ok: await jobsApi.delete(payload?.id) };
       case 'project':
         return { project: await snapshot.getProject(payload ?? {}) };
+      case 'project.pick': {
+        const picker = ctx.get?.('directoryPicker');
+        if (!picker || typeof picker.capability !== 'function') {
+          const error = new Error('当前环境没有可用的系统目录选择器，请手动输入路径');
+          error.code = 'code-review/picker-unavailable';
+          throw error;
+        }
+        const capability = picker.capability();
+        if (capability?.kind !== 'native' || typeof capability.pick !== 'function') {
+          const error = new Error('当前目录选择器不支持系统对话框，请手动输入路径');
+          error.code = 'code-review/picker-unsupported';
+          throw error;
+        }
+        const selected = await capability.pick(new AbortController().signal);
+        return { path: typeof selected === 'string' && selected ? selected : null };
+      }
       case 'project.add': {
         const project = await snapshot.addProjectPath(payload?.path);
         return { project, snapshot: snapshot.build() };

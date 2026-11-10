@@ -896,6 +896,8 @@ export function buildMock() {
         return { ok: true, latencyMs: 412, message: 'LLM connected: deepseek/deepseek-chat', error: null };
       case 'project':
         return { project: projects.find((item) => item.id === payload.projectId) ?? current };
+      case 'project.pick':
+        return { path: '/Users/jkin/workspace/qise-tech/synapse-router' };
       case 'project.add': {
         const path = String(payload.path ?? '').trim();
         const project = {
