@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     // 1. 常量 / 字典
     // =====================================================================
 
-    const PLUGIN_VERSION = '0.5.3';
+    const PLUGIN_VERSION = '0.5.4';
     const ENDPOINT = 'code-review';
     const PANEL_ID = 'code-review';
     const PANEL_ORDER = 24;
@@ -3749,6 +3749,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
           prompt: (sessionId, text, requestId) => remote.session.prompt({
             requestId,
             sessionId,
+            mode: 'queue',
             content: [{ type: 'text', text }],
             clientTimeZone: (() => {
               try { return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined; } catch { return undefined; }
@@ -3765,7 +3766,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             prompt: (sessionId, text, requestId) => {
               const session = manager.get(sessionId);
               if (!session || typeof session.prompt !== 'function') throw new Error('Session 尚未就绪');
-              return session.prompt([{ type: 'text', text }], undefined, undefined, requestId);
+              return session.prompt([{ type: 'text', text }], 'queue', undefined, requestId);
             },
           };
         }
@@ -3780,7 +3781,23 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       if (!api) return null;
       const projectPath = str(obj(context).projectPath);
       if (!projectPath) return null;
-      const created = await api.create({ cwd: projectPath });
+      // Attach to the project Workspace when possible, so the opened Session is
+      // grouped under the project (and can be focused by uiWorkspace).
+      let workspaceId = '';
+      try {
+        const workspaces = clientCtx && typeof clientCtx.get === 'function' ? clientCtx.get('workspaces') : null;
+        const snapshot = workspaces && workspaces.list && workspaces.list.getSnapshot();
+        const items = arr(snapshot && snapshot.items);
+        const found = items.find((item) => str(item.path) === projectPath);
+        if (found) workspaceId = str(found.workspaceId);
+        if (!workspaceId && workspaces && typeof workspaces.create === 'function') {
+          const createdWorkspace = await workspaces.create({ path: projectPath });
+          workspaceId = str(createdWorkspace && (createdWorkspace.workspaceId || createdWorkspace.id));
+        }
+      } catch {
+        workspaceId = '';
+      }
+      const created = await api.create(workspaceId ? { workspaceId } : { cwd: projectPath });
       if (!created || !created.ok) {
         throw new Error(errorText(obj(created && created.error).message || '创建会话失败'));
       }

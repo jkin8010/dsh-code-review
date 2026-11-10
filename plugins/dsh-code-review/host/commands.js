@@ -185,7 +185,7 @@ function findingsText(findings, limit = 8) {
 }
 
 export function createCodeReviewCommand({
-  jobs, snapshot, getSessionController, config, logger,
+  jobs, snapshot, getSessionController, getWorkspaceRegistry, config, logger,
 } = {}) {
   const log = (level, message) => {
     try {
@@ -241,7 +241,8 @@ export function createCodeReviewCommand({
 
   async function fixJob(job, controller) {
     try {
-      const result = await createFixSessionForJob({ controller, job, logger });
+      const workspaceRegistry = typeof getWorkspaceRegistry === 'function' ? getWorkspaceRegistry() : null;
+      const result = await createFixSessionForJob({ controller, workspaceRegistry, job, logger });
       return result;
     } catch (error) {
       return { error: errorText(error) };

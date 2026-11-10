@@ -103,6 +103,7 @@ function rpcReply(rpcId, result) {
 // Captured through `ctx.inject(['sessionController'])` in apply(); module-level so
 // the RPC handler (defined outside apply) and the command share one reference.
 let activeSessionController = null;
+let activeWorkspaceRegistry = null;
 
 function registerRpc(ctx, handler, logger) {
   const registry = ctx.get?.('connection')?.fetch;
@@ -269,6 +270,7 @@ export function apply(ctx, rawConfig) {
     config,
     logger,
     getSessionController: () => activeSessionController ?? ctx.get?.('sessionController'),
+    getWorkspaceRegistry: () => activeWorkspaceRegistry ?? ctx.get?.('workspaceRegistry'),
   });
   if (typeof ctx.inject === 'function') {
     ctx.inject(['commands'], (scope) => {
@@ -341,6 +343,7 @@ export function apply(ctx, rawConfig) {
         }
         return createFixSessionForJob({
           controller: activeSessionController ?? ctx.get?.('sessionController'),
+          workspaceRegistry: activeWorkspaceRegistry ?? ctx.get?.('workspaceRegistry'),
           job,
           logger,
         });

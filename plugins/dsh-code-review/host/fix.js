@@ -41,7 +41,7 @@ function buildFixPrompt(job, findings) {
  * @param logger - plugin logger.
  * @returns structured result; prompt failures still return the new session id.
  */
-export async function createFixSessionForJob({ controller, job, logger }) {
+export async function createFixSessionForJob({ controller, workspaceRegistry, job, logger }) {
   if (!controller || typeof controller.create !== 'function') {
     const error = new Error('当前 DSH 环境不支持从插件创建会话（sessionController 不可用）');
     error.code = 'code-review/session-unavailable';
@@ -49,9 +49,22 @@ export async function createFixSessionForJob({ controller, job, logger }) {
   }
   const findings = Array.isArray(job.findings) ? job.findings : [];
   const prompt = buildFixPrompt(job, findings);
+  // Prefer creating inside the project's Workspace so the new Session is grouped
+  // under the project and the UI can open it directly.
+  let workspace = null;
+  try {
+    const list = typeof workspaceRegistry?.list === 'function' ? workspaceRegistry.list() : [];
+    workspace = list.find((item) => item?.path === job.projectPath) ?? null;
+    if (!workspace && typeof workspaceRegistry?.create === 'function') {
+      workspace = await workspaceRegistry.create(job.projectPath);
+    }
+  } catch (error) {
+    logger?.warn?.(`fix session workspace lookup failed: ${errorText(error)}`);
+  }
+  const workspaceId = workspace?.id ?? workspace?.workspaceId;
   let created;
   try {
-    created = await controller.create({ cwd: job.projectPath });
+    created = await controller.create(workspaceId ? { workspaceId } : { cwd: job.projectPath });
   } catch (cause) {
     const error = new Error(`创建修复会话失败：${errorText(cause)}`);
     error.code = 'code-review/session-failed';

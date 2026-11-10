@@ -121,12 +121,23 @@ const cleanups = [];
 // Stands in for the DSH Client Remote namespace used by the old-Host fallback.
 const mockRemote = {
   session: {
-    create: async () => ({ ok: true, value: { sessionId: 'session-fallback-fix' } }),
+    create: async (request) => {
+      window.__FIX_CREATE__ = request;
+      return { ok: true, value: { sessionId: 'session-fallback-fix' } };
+    },
     prompt: async (request) => {
       window.__FIX_PROMPT__ = request;
       return { ok: true, value: { accepted: true } };
     },
   },
+};
+const mockWorkspaces = {
+  list: {
+    getSnapshot: () => ({
+      items: [{ workspaceId: 'ws-demo', path: '/Users/jkin/workspace/jkin8010/mopng-api' }],
+    }),
+  },
+  create: async () => ({ workspaceId: 'ws-demo' }),
 };
 const ctx = {
   connection,
@@ -135,6 +146,7 @@ const ctx = {
     if (name === 'locale') return locale;
     if (name === 'connection') return connection;
     if (name === 'remote') return mockRemote;
+    if (name === 'workspaces') return mockWorkspaces;
     return undefined;
   },
   effect(fn, _label) {
