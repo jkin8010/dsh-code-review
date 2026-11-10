@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     // 1. 常量 / 字典
     // =====================================================================
 
-    const PLUGIN_VERSION = '0.3.3';
+    const PLUGIN_VERSION = '0.4.0';
     const ENDPOINT = 'code-review';
     const PANEL_ID = 'code-review';
     const PANEL_ORDER = 24;
@@ -2302,7 +2302,19 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       const [categoryFilter, setCategoryFilter] = React.useState('all');
       const [fileFilter, setFileFilter] = React.useState('all');
       const [query, setQuery] = React.useState('');
+      const [fixBusy, setFixBusy] = React.useState(false);
       const toast = useToast();
+      const startFixSession = async () => {
+        if (fixBusy || !spec.onCreateFix) return;
+        setFixBusy(true);
+        try {
+          await spec.onCreateFix(job.id);
+        } catch (error) {
+          toast(errorText(error), 'error');
+        } finally {
+          setFixBusy(false);
+        }
+      };
 
       React.useEffect(() => {
         setSevFilter('all');
@@ -2540,6 +2552,11 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
           bodyClassName: 'cr-card-body',
           children: h('div', { style: { display: 'flex', flexDirection: 'column', gap: 7 } },
             h('button', {
+              type: 'button', className: 'cr-btn is-primary', style: { justifyContent: 'flex-start' },
+              disabled: fixBusy || isBusy,
+              onClick: startFixSession,
+            }, h(Icon, { name: fixBusy ? 'clock' : 'zap', size: 12 }), fixBusy ? '正在创建修复会话…' : '新建修复 Session'),
+            h('button', {
               type: 'button', className: 'cr-btn', style: { justifyContent: 'flex-start' },
               onClick: () => spec.onRetry && spec.onRetry(str(job.id), str(job.type)),
             }, h(Icon, { name: 'refresh', size: 12 }), '重新运行评审'),
@@ -2560,6 +2577,12 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
           h('span', { className: 'cr-faint', style: { fontSize: 10, fontFamily: 'var(--mono)' } }, str(job.id)),
           h('span', { style: { marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' } },
             h(StatusPill, { status }),
+            h('button', {
+              type: 'button', className: 'cr-btn is-sm is-primary',
+              disabled: fixBusy || isBusy,
+              onClick: startFixSession,
+              title: '在项目目录中新建 DSH 会话，并自动填入修复提示词',
+            }, h(Icon, { name: fixBusy ? 'clock' : 'zap', size: 11 }), fixBusy ? '创建中…' : '新建修复 Session'),
             isBusy
               ? h('button', { type: 'button', className: 'cr-btn is-sm is-danger', onClick: () => spec.onCancel && spec.onCancel(job.id) }, h(Icon, { name: 'ban', size: 11 }), '取消评审')
               : h('button', { type: 'button', className: 'cr-btn is-sm', onClick: () => spec.onRetry && spec.onRetry(job.id) }, h(Icon, { name: 'refresh', size: 11 }), '重新运行'))),
@@ -3631,6 +3654,28 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
     }
 
     let connection = null;
+    let clientCtx = null;
+
+    /** Ask the DSH client to focus a session; returns false when the service is absent. */
+    function openDshSession(sessionId) {
+      const id = str(sessionId);
+      if (!id) return false;
+      try {
+        const uiWorkspace = clientCtx && clientCtx.get ? clientCtx.get('uiWorkspace') : null;
+        if (uiWorkspace && typeof uiWorkspace.openSession === 'function') {
+          uiWorkspace.openSession(id);
+          return true;
+        }
+        const sessions = clientCtx && clientCtx.get ? clientCtx.get('sessions') : null;
+        if (sessions && typeof sessions.open === 'function') {
+          sessions.open(id);
+          return true;
+        }
+      } catch {
+        /* navigation is best effort */
+      }
+      return false;
+    }
 
     class Boundary extends React.Component {
       constructor(props) {
@@ -3802,6 +3847,22 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         }
       }, [rpc, pushToast, refresh]);
 
+      const createFixSession = React.useCallback(async (id) => {
+        const envelope = await rpc('fix.create', { jobId: str(id) });
+        const payload = unwrapEnvelope(envelope, (value) => Boolean(value && typeof value.sessionId === 'string' && value.sessionId));
+        if (!payload) throw new Error('服务端未返回 sessionId');
+        const sessionId = str(payload.sessionId);
+        const opened = openDshSession(sessionId);
+        if (payload.prompted === false) {
+          pushToast(`修复会话已创建，但问题描述发送失败：${errorText(obj(payload.error).message)}`, 'warn');
+        } else {
+          pushToast(opened
+            ? `已创建修复会话并打开（${num(payload.findings)} 条 findings）`
+            : `已创建修复会话 ${sessionId}，请在左侧会话列表打开`, opened ? 'success' : 'info');
+        }
+        refresh();
+      }, [rpc, pushToast, refresh]);
+
       const deleteJob = React.useCallback(async (id) => {
         try {
           await rpc('delete', { id: str(id) });
@@ -3881,6 +3942,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
               onCancel: cancelJob,
               onRetry: retryJob,
               onDelete: deleteJob,
+              onCreateFix: createFixSession,
               onReload: () => {
                 setDetailId('');
                 const jobs = arr(snapshot.jobs);
@@ -3955,6 +4017,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
     return {
       inject: ['slots', 'connection'],
       apply(ctx) {
+        clientCtx = ctx;
         connection = ctx.connection;
 
         const locale = ctx.get('locale');

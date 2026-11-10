@@ -1,6 +1,6 @@
 # dsh-code-review 交付说明
 
-> 插件包：`plugins/dsh-code-review`（`@jkin8010/dsh-code-review` v0.3.3）
+> 插件包：`plugins/dsh-code-review`（`@jkin8010/dsh-code-review` v0.4.0）
 > 依赖：`ocr`（`@alibaba-group/open-code-review`）v1.13.6、`git`、Node 22+
 > 本机已安装到 desktop profile；**重启 DSH 后生效**（见文末）。
 
@@ -75,6 +75,7 @@ plugins/dsh-code-review/
 | 引擎状态机 / 四类评审 / 快照 / 持久化 | `node tests/code-review/engine-selftest.mjs` | ✅ |
 | 委托模式（OCR 选文件 + DSH 模型） | `node tests/code-review/delegate-selftest.mjs` | ✅ |
 | 对话内工具 `code_review`（start/status/detail/list） | `node tests/code-review/tool-selftest.mjs` | ✅ |
+| 一键修复会话（fix.create + sessionController mock） | `node tests/code-review/host-selftest.mjs` | ✅ |
 | Host RPC 全链路（真实 git/ocr/analyze + 假 Cordis） | `node tests/code-review/host-selftest.mjs` | ✅ |
 | git/热力图/OCR 适配（真实仓库 + 真实 ocr preview） | `node tests/code-review/git-ocr.test.mjs` | ✅ 33/33 |
 | 架构/模块/信息流/diff 分析 | `node tests/code-review/analyze.test.mjs` | ✅ 8/8 |

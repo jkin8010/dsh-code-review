@@ -225,6 +225,8 @@ async function main() {
   if (!sidePanel) detailIssues.push('详情页右侧 sticky 概览卡缺失');
   const sideCards = await page.$$eval('.cr-detail-side .cr-card', (nodes) => nodes.length);
   if (sideCards < 3) detailIssues.push(`右侧概览卡不足：${sideCards}`);
+  const hasFixButton = await page.$$eval('.cr-btn', (nodes) => nodes.some((node) => node.textContent.includes('修复 Session')));
+  if (!hasFixButton) detailIssues.push('详情页缺少“新建修复 Session”按钮');
   results.push({ view: 'detail', ok: detailIssues.length === 0, issues: detailIssues, findings, stages, title: headTitle });
   if (detailIssues.length) failed = true;
   await shoot('detail');

@@ -27,10 +27,20 @@ await mkdir(STATE, { recursive: true });
 let route = null;
 const effects = [];
 const logs = [];
+let fixSessionPrompt = '';
 const scope = {
   get: (service) => {
     if (service === 'connection') {
       return { fetch: { register: (config) => { route = config; return () => { route = null; }; } } };
+    }
+    if (service === 'sessionController') {
+      return {
+        create: async () => ({ sessionId: 'session-fix-test' }),
+        prompt: async (request) => {
+          fixSessionPrompt = request.content?.[0]?.text ?? '';
+          return { accepted: true };
+        },
+      };
     }
     return undefined;
   },
@@ -227,6 +237,13 @@ assert.ok(Array.isArray(listing.roots));
 
 const removed = await rpc('project.remove', { path: addedRepo });
 assert.equal(removed.ok, true);
+
+const fix = await rpc('fix.create', { jobId: changedDone.job.id });
+assert.equal(fix.sessionId, 'session-fix-test');
+assert.equal(fix.prompted, true);
+assert.ok(fixSessionPrompt.includes('代码修复助手'));
+assert.ok(fixSessionPrompt.includes('修复'));
+assert.ok(fixSessionPrompt.includes('changed-proj') || fixSessionPrompt.length > 200);
 
 // --- 5. job listing, cancel and retry wiring ------------------------------
 const after = await snapshot();

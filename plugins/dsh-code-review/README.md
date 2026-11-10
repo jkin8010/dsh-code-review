@@ -42,6 +42,14 @@ DSH 左侧栏入口 + 整页**代码评审工作台**：把 [alibaba/open-code-r
 Agent 会启动真实评审（默认等待完成）并把问题摘要与 findings 返回在对话里；完整详情在侧栏页面。
 `action=status/detail/list` 可查询进度与历史，`wait:false` 可后台执行后再取结果。
 
+## 一键修复 Session
+
+评审详情页提供「新建修复 Session」：调用 Host 的 `sessionController.create({ cwd })` 在项目目录创建会话，
+并把本次 findings 整理成修复提示词（优先 critical/high、含文件与行号、建议代码）自动发送；
+客户端支持 `uiWorkspace.openSession` 时直接跳到新会话，否则在左侧会话列表打开。
+
+> 需要 DSH 提供 `sessionController`；不可用时按钮会提示环境不支持。
+
 ## 看什么
 
 - **总览**：6 个核心指标（评审总数 / 近 7 天 / 进行中 / 问题数 / 已审文件 / 覆盖模块）、
