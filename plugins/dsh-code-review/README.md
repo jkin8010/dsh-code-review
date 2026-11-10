@@ -60,6 +60,14 @@ DSH 左侧栏入口 + 整页**代码评审工作台**：把 [alibaba/open-code-r
 
 ## 安装
 
+### 一键安装（把下面这行 Prompt 发给 DSH）
+
+```text
+请安装 DSH 插件 dsh-code-review：先执行 git clone https://github.com/jkin8010/dsh-code-review.git ~/dsh-code-review，再用 plugin_manager 的 install_bundle 安装 ~/dsh-code-review/plugins/dsh-code-review，安装完成后检查插件是否启用、ocr --version 与 LLM 引擎状态，并告诉我是否需要重启 DSH。
+```
+
+### 手动安装
+
 ```bash
 # 在 DSH 里（Web 侧栏 Plugins 或 agent tool）：
 plugin_manager → action: install_bundle, target: <本目录绝对路径>

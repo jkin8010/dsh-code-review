@@ -32,6 +32,16 @@
 
 需要 DeepSeek Harness（含 Web UI）、`ocr` CLI ≥ 1.13、`git`、Node 22+。
 
+### 一键安装（把下面这行 Prompt 发给 DSH）
+
+```text
+请安装 DSH 插件 dsh-code-review：先执行 git clone https://github.com/jkin8010/dsh-code-review.git ~/dsh-code-review，再用 plugin_manager 的 install_bundle 安装 ~/dsh-code-review/plugins/dsh-code-review，安装完成后检查插件是否启用、ocr --version 与 LLM 引擎状态，并告诉我是否需要重启 DSH。
+```
+
+> `plugin_manager` 返回 `restart-required` 时重启 DSH 即可生效；返回已应用则刷新页面。
+
+### 手动安装
+
 ```bash
 # 1) 安装 open-code-review CLI
 npm i -g @alibaba-group/open-code-review
