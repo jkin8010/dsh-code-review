@@ -210,6 +210,14 @@ const addedSnap = await snapshot({ projectId: projectId(addedRepo) });
 assert.equal(addedSnap.project.path, addedRepo);
 assert.equal(addedSnap.project.id, projectId(addedRepo));
 
+// Switching the current project through a snapshot request must stick, and the
+// architecture graph must then resolve against that project.
+const switched = await rpc('snapshot', { projectId: projectId(cleanRepo) });
+assert.equal(switched.project.id, projectId(cleanRepo));
+assert.equal(switched.project.path, cleanRepo);
+const graphForSwitched = await rpc('graph', { projectId: projectId(cleanRepo), kind: 'architecture' });
+assert.ok(graphForSwitched.graph);
+
 // A review started on a path outside projectRoots must keep that project in the
 // picker after the next refresh (this is the "reviewed project disappears" bug).
 const reviewedRepo = join(adHocRoot, 'reviewed-project');

@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     // 1. 常量 / 字典
     // =====================================================================
 
-    const PLUGIN_VERSION = '0.8.0';
+    const PLUGIN_VERSION = '0.8.1';
     const ENDPOINT = 'code-review';
     const PANEL_ID = 'code-review';
     const PANEL_ORDER = 24;
@@ -3036,7 +3036,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
 
     function ArchitectureView(props) {
       const snapshot = obj(props && props.snapshot);
-      const project = obj(snapshot.project);
+      const project = obj((props && props.project) || snapshot.project);
       const loaded = useGraphLoader(props && props.connection, 'architecture', str(project.id));
       const data = obj(loaded.data);
       const graph = obj(data.graph);
@@ -3291,7 +3291,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
 
     function FlowView(props) {
       const snapshot = obj(props && props.snapshot);
-      const project = obj(snapshot.project);
+      const project = obj((props && props.project) || snapshot.project);
       const loaded = useGraphLoader(props && props.connection, 'flow', str(project.id));
       const data = obj(loaded.data);
       const graph = obj(data.graph);
@@ -4200,10 +4200,12 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         if (!id || id === str(obj(currentProject).id)) return;
         setProjectId(id);
         try {
-          const envelope = await rpc('project', { projectId: id });
+          // A snapshot request carrying projectId is what moves the Host's
+          // current project; `project` alone only inspects the target.
+          const envelope = await rpc('snapshot', { projectId: id });
           const payload = unwrapEnvelope(envelope, (candidate) => candidate && candidate.project);
           if (payload) setProjectOverride(obj(payload.project));
-          pushToast(`已切换当前项目：${str(obj(payload).project ? obj(payload).project.name : id)}`, 'success');
+          pushToast(`已切换当前项目：${str(payload && payload.project ? payload.project.name : id)}`, 'success');
         } catch (error) {
           pushToast(errorText(error), 'error');
         }
@@ -4374,8 +4376,8 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             view === 'projects' ? h(ProjectsView, {
               snapshot, onSwitchProject: switchProject, onAddProject: () => setAddProjectOpen(true),
             }) : null,
-            view === 'architecture' ? h(ArchitectureView, { snapshot, connection }) : null,
-            view === 'flow' ? h(FlowView, { snapshot, connection }) : null,
+            view === 'architecture' ? h(ArchitectureView, { snapshot, connection, project: currentProject }) : null,
+            view === 'flow' ? h(FlowView, { snapshot, connection, project: currentProject }) : null,
             view === 'detail' ? h(DetailView, {
               connection,
               jobId: detailId,
