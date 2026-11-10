@@ -4,7 +4,10 @@
       config:
         # 默认工作区：自动发现其下有 .git 的直接子目录
         projectRoots:
-          - /Users/jkin/workspace/jkin8010
+          - /Users/jkin/workspace
+        # 向下扫描 2 层，覆盖 <workspace>/<org>/<repo> 布局
+        projectDepth: 2
+        maxProjects: 40
         # 额外纳入的项目（可非 Git）：当前项目/插件工作区
         extraProjects:
           - /Users/jkin/workspace/jkin8010/dhs-feishu-plugin

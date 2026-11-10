@@ -229,8 +229,13 @@ assert.equal(snap.health.llm.state, 'unconfigured');
 assert.equal(snap.config.llmConfigured, false);
 assert.ok(snap.project, 'snapshot must expose the current project');
 assert.equal(snap.project.heatmap.days.length, 365);
-assert.equal(snap.projects.length, 1);
-assert.ok(snap.projects[0].heatmap.spark.length === 90);
+// Project sources are unioned (roots + DSH workspaces + reviewed + added), so
+// the real machine may contribute more cards; the fixture project must be one.
+const fixtureProject = snap.projects.find((project) => project.path === REPO);
+assert.ok(fixtureProject, 'the fixture project must appear in the project list');
+assert.ok(fixtureProject.heatmap.spark.length === 90);
+assert.ok(snap.projects.length >= 1);
+assert.deepEqual(snap.config.addedProjects, []);
 assert.equal(snap.jobs.length, 4);
 assert.equal(snap.overview.reviewsTotal, 4);
 assert.equal(snap.overview.findings.total, 1 + 1 + 2 + 1);

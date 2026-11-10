@@ -60,6 +60,9 @@ export function expandHome(p) -> string
   pollSeconds: 2,                 // 前端轮询
   projectRoots: [],               // 自动发现项目（含 .git 的子目录）
   extraProjects: [],              // 额外纳入的项目路径（可非 Git，用于模块/架构/信息流评审）
+  projectDepth: 2,                // projectRoots 目录扫描深度（1-3）
+  maxProjects: 40,                // 最多纳入的项目数
+  // 运行时还会自动并入：DSH 工作区、已评审项目、UI 添加的项目（persist 在 stateDir/projects.json）
   defaultProjectPath: '',         // 空 = 最近提交的已发现项目（或 projectRoots 首项）
   excludeProjects: [],            // 目录名或路径前缀
   stateDir: '~/.dsh/code-review',
@@ -374,6 +377,8 @@ export function createSnapshot({ config, store, jobs, git, ocr, logger }) -> { b
 | `retry` | `{ id }` | `{ job }` |
 | `delete` | `{ id }` | `{ ok }` |
 | `project` | `{ projectId?, projectPath?, refresh? }` | `{ project: ProjectView }` |
+| `project.add` | `{ path }`（绝对路径，Git 或普通目录） | `{ project, snapshot }`，持久化 + 设为当前 |
+| `project.remove` | `{ path }` | `{ ok, snapshot }`（已评审项目保留，仅移出「已添加」） |
 | `graph` | `{ projectId?, projectPath?, kind:'architecture'\|'flow' }` | `{ graph, summary, findings }` |
 | `refresh` | `{ scope?:'projects'\|'all' }` | Snapshot |
 | `llmTest` | `{}` | `{ ok, latencyMs, message, error }` |

@@ -896,6 +896,20 @@ export function buildMock() {
         return { ok: true, latencyMs: 412, message: 'LLM connected: deepseek/deepseek-chat', error: null };
       case 'project':
         return { project: projects.find((item) => item.id === payload.projectId) ?? current };
+      case 'project.add': {
+        const path = String(payload.path ?? '').trim();
+        const project = {
+          ...current,
+          id: `p-${Buffer.from(path).toString('hex').slice(0, 10)}`,
+          name: path.split('/').filter(Boolean).pop() || 'project',
+          path, branch: '—', head: '', headSubject: '', dirty: false, lastReviewAt: null, reviewCount: 0,
+        };
+        projects.unshift(project);
+        snapshot.projects.unshift({ ...project });
+        snapshot.project = project;
+        snapshot.config.addedProjects = [...(snapshot.config.addedProjects ?? []), path];
+        return { project, snapshot };
+      }
       case 'ping':
         return { ok: true, at: iso(Date.now()) };
       default:

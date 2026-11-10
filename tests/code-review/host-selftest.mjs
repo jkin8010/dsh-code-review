@@ -9,7 +9,8 @@
  *   node tests/code-review/host-selftest.mjs
  */
 import assert from 'node:assert/strict';
-import { mkdir, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { apply, name } from '../../plugins/dsh-code-review/index.js';
 import { projectId } from '../../plugins/dsh-code-review/host/config.js';
@@ -172,6 +173,46 @@ assert.ok(changedDone.job.plan.reviewable > 0, 'changed worktree must be reviewa
 assert.ok(changedDone.findings.length >= 2, 'diff heuristics must find the injected problems');
 assert.ok(changedDone.findings.some((item) => item.category === 'security'));
 assert.ok(changedDone.findings.some((item) => item.title.includes('catch') || item.category === 'bug'));
+
+// --- 4b. ad-hoc project outside projectRoots ------------------------------
+const adHocRoot = await mkdtemp(join(tmpdir(), 'cr-adhoc-'));
+const addedRepo = join(adHocRoot, 'added-project');
+await mkdir(addedRepo, { recursive: true });
+execFileSync('git', ['init', '-q'], { cwd: addedRepo });
+execFileSync('git', ['config', 'user.email', 't@t'], { cwd: addedRepo });
+execFileSync('git', ['config', 'user.name', 't'], { cwd: addedRepo });
+await writeFile(join(addedRepo, 'main.py'), 'def hello():\n    return 1\n');
+execFileSync('git', ['add', '.'], { cwd: addedRepo });
+execFileSync('git', ['commit', '-qm', 'init'], { cwd: addedRepo });
+
+const added = await rpc('project.add', { path: addedRepo });
+assert.equal(added.project.path, addedRepo, 'project.add must return the added project');
+assert.ok(added.snapshot.projects.some((project) => project.path === addedRepo), 'added project must appear in the snapshot');
+const addedSnap = await snapshot({ projectId: projectId(addedRepo) });
+assert.equal(addedSnap.project.path, addedRepo);
+assert.equal(addedSnap.project.id, projectId(addedRepo));
+
+// A review started on a path outside projectRoots must keep that project in the
+// picker after the next refresh (this is the "reviewed project disappears" bug).
+const reviewedRepo = join(adHocRoot, 'reviewed-project');
+await mkdir(reviewedRepo, { recursive: true });
+execFileSync('git', ['init', '-q'], { cwd: reviewedRepo });
+execFileSync('git', ['config', 'user.email', 't@t'], { cwd: reviewedRepo });
+execFileSync('git', ['config', 'user.name', 't'], { cwd: reviewedRepo });
+await writeFile(join(reviewedRepo, 'app.py'), 'def hello():\n    return 1\n');
+execFileSync('git', ['add', '.'], { cwd: reviewedRepo });
+execFileSync('git', ['commit', '-qm', 'init'], { cwd: reviewedRepo });
+const adHocJob = await rpc('start', { type: 'workspace', projectPath: reviewedRepo });
+const adHocDone = await waitFor(adHocJob.job.id);
+assert.equal(adHocDone.job.status, 'completed');
+await rpc('refresh');
+const refreshed = await rpc('snapshot', {});
+assert.ok(refreshed.projects.some((project) => project.path === reviewedRepo),
+  'a reviewed ad-hoc project must stay in the project list after refresh');
+assert.ok(refreshed.stats.byProject.some((item) => item.projectId === projectId(reviewedRepo)));
+
+const removed = await rpc('project.remove', { path: addedRepo });
+assert.equal(removed.ok, true);
 
 // --- 5. job listing, cancel and retry wiring ------------------------------
 const after = await snapshot();

@@ -104,8 +104,10 @@ plugin_manager → action: install_bundle
     - id: qise-code-review
       name: '@jkin8010/dsh-code-review'
       config:
-        projectRoots: [/Users/jkin/workspace/jkin8010]   # 自动发现其下有 .git 的直接子目录
-        extraProjects: []                                 # 额外纳入的项目（可非 Git）
+        projectRoots: [/Users/jkin/workspace]   # 自动发现仓库（默认向下 2 层）
+        projectDepth: 2                          # 目录扫描深度 1-3
+        maxProjects: 40                          # 最多纳入的项目数
+        extraProjects: []                        # 额外纳入的项目（可非 Git）
         defaultProjectPath: ''                            # 空 = 最近提交的已发现项目
         excludeProjects: []
         stateDir: ~/.dsh/code-review                      # 评审历史/artifact

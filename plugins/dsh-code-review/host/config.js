@@ -17,6 +17,8 @@ export const DEFAULTS = Object.freeze({
   pollSeconds: 2,
   projectRoots: [],
   extraProjects: [],
+  projectDepth: 2,
+  maxProjects: 40,
   defaultProjectPath: '',
   excludeProjects: [],
   stateDir: '~/.dsh/code-review',

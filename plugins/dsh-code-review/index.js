@@ -20,7 +20,7 @@ import { readFile } from 'node:fs/promises';
 import * as git from './host/git.js';
 import * as ocr from './host/ocr.js';
 import * as analyze from './host/analyze.js';
-import { findOcrBinary, normalizeConfig, resolveOcrEnv } from './host/config.js';
+import { expandHome, findOcrBinary, normalizeConfig, resolveOcrEnv } from './host/config.js';
 import { createJobs } from './host/jobs.js';
 import { createLlmReviewer } from './host/llm-review.js';
 import { registerCodeReviewTool } from './host/tool.js';
@@ -263,6 +263,12 @@ export function apply(ctx, rawConfig) {
         return { ok: await jobsApi.delete(payload?.id) };
       case 'project':
         return { project: await snapshot.getProject(payload ?? {}) };
+      case 'project.add': {
+        const project = await snapshot.addProjectPath(payload?.path);
+        return { project, snapshot: snapshot.build() };
+      }
+      case 'project.remove':
+        return { ok: await snapshot.removeProjectPath(payload?.path), snapshot: snapshot.build() };
       case 'graph':
         return snapshot.getGraph({
           projectId: payload?.projectId,

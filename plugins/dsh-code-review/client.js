@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     // 1. 常量 / 字典
     // =====================================================================
 
-    const PLUGIN_VERSION = '0.2.4';
+    const PLUGIN_VERSION = '0.3.0';
     const ENDPOINT = 'code-review';
     const PANEL_ID = 'code-review';
     const PANEL_ORDER = 24;
@@ -1410,6 +1410,62 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         }, option.label)));
     }
 
+    function AddProjectDialog(props) {
+      const spec = props || {};
+      const [path, setPath] = React.useState('');
+      const [busy, setBusy] = React.useState(false);
+      const [error, setError] = React.useState('');
+      React.useEffect(() => {
+        if (spec.open) {
+          setPath('');
+          setError('');
+          setBusy(false);
+        }
+      }, [spec.open]);
+      if (!spec.open) return null;
+      const submit = async () => {
+        const value = path.trim();
+        if (!value) {
+          setError('请填写项目目录的绝对路径');
+          return;
+        }
+        setBusy(true);
+        setError('');
+        try {
+          await spec.onSubmit(value);
+        } catch (cause) {
+          setError(errorText(cause));
+          setBusy(false);
+        }
+      };
+      return h(Modal, {
+        open: spec.open,
+        onClose: busy ? null : spec.onClose,
+        title: '添加项目',
+        subtitle: '输入项目目录的绝对路径；添加后会持久化，并出现在项目列表与新建评审里',
+        footer: [
+          h('span', { key: 'hint', className: 'cr-grow cr-hint' }, '支持 Git 仓库或普通目录 · 已评审项目与 DSH 工作区会自动出现'),
+          h('button', { key: 'cancel', type: 'button', className: 'cr-btn is-ghost', onClick: spec.onClose, disabled: busy }, '取消'),
+          h('button', { key: 'ok', type: 'button', className: 'cr-btn is-primary', onClick: submit, disabled: busy },
+            h(Icon, { name: busy ? 'clock' : 'plus', size: 12 }), busy ? '添加中…' : '添加项目'),
+        ],
+        children: [
+          h('div', { key: 'path', className: 'cr-field' },
+            h('span', { className: 'cr-label' }, h(Icon, { name: 'folder', size: 11 }), '项目路径'),
+            h('input', {
+              className: 'cr-input',
+              value: path,
+              autoFocus: true,
+              placeholder: '/Users/you/workspace/project',
+              onChange: (event) => setPath(event.target.value),
+              onKeyDown: (event) => { if (event.key === 'Enter') submit(); },
+              disabled: busy,
+            })),
+          error ? h('div', { key: 'error', className: 'cr-hint', style: { color: '#ff9aa4', marginTop: 8 } }, error) : null,
+        ],
+      });
+    }
+
     function ToastStack(props) {
       const list = arr(props && props.toasts);
       return h('div', { className: 'cr-toasts' }, list.map((toast) => h('div', {
@@ -2428,9 +2484,14 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
           title: '项目',
           icon: 'folder',
           subtitle: `${projects.length} 个仓库 · 点击卡片切换当前项目`,
-          right: h('span', { className: 'cr-chip' },
-            h(Icon, { name: 'folder', size: 11 }),
-            h('span', null, str(current.path, '—'))),
+          right: h('div', { style: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 } },
+            h('button', {
+              type: 'button', className: 'cr-btn is-sm',
+              onClick: () => props && props.onAddProject && props.onAddProject(),
+            }, h(Icon, { name: 'plus', size: 11 }), '添加项目'),
+            h('span', { className: 'cr-chip' },
+              h(Icon, { name: 'folder', size: 11 }),
+              h('span', { className: 'cr-ellipsis' }, str(current.path, '—')))),
           bodyClassName: 'cr-card-body',
           children: h('div', { className: 'cr-projects' }, projects.map((project) => {
             const active = str(project.id) === str(current.id);
@@ -3382,11 +3443,20 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             h('span', { className: 'cr-picker-icon' }, h(Icon, { name: 'folder', size: 12 })),
             h('select', {
               value: str(project.id),
-              onChange: (event) => spec.onSwitchProject && spec.onSwitchProject(event.target.value),
-              title: '切换当前项目',
-            }, projects.length
+              onChange: (event) => {
+              const value = str(event.target.value);
+              if (value === '__add__') {
+                event.target.value = str(project.id);
+                if (spec.onAddProject) spec.onAddProject();
+                return;
+              }
+              if (spec.onSwitchProject) spec.onSwitchProject(value);
+            },
+              title: '切换当前项目 / 添加项目路径',
+            }, (projects.length
               ? projects.map((item) => h('option', { key: str(item.id), value: str(item.id) }, `${item.name}${item.dirty ? ' · dirty' : ''}`))
-              : h('option', { value: '' }, str(project.name, '未发现项目'))),
+              : [h('option', { key: 'empty', value: '' }, str(project.name, '未发现项目'))])
+              .concat([h('option', { key: '__add__', value: '__add__' }, '＋ 添加项目路径…')])),
             h(Icon, { name: 'chevronDown', size: 11, className: 'cr-picker-caret' })),
           h('div', { className: 'cr-health' },
             h(HealthChip, {
@@ -3487,6 +3557,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       const [detailId, setDetailId] = React.useState(str(spec.initialJobId));
       const [launchOpen, setLaunchOpen] = React.useState(initialView === 'launch');
       const [settingsOpen, setSettingsOpen] = React.useState(initialView === 'settings');
+      const [addProjectOpen, setAddProjectOpen] = React.useState(false);
       const [projectId, setProjectId] = React.useState('');
       const [pollSeconds, setPollSeconds] = React.useState(2);
       const [projectOverride, setProjectOverride] = React.useState(null);
@@ -3569,6 +3640,22 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         refresh();
       }, [currentProject, rpc, pushToast, refresh]);
 
+      const addProject = React.useCallback(async (path) => {
+        const envelope = await rpc('project.add', { path });
+        const payload = unwrapEnvelope(envelope, (value) => Boolean(value && value.snapshot));
+        if (!payload) throw new Error('服务端未返回项目快照');
+        const next = obj(payload);
+        const nextProject = obj(next.project);
+        if (nextProject.id) {
+          setProjectOverride(nextProject);
+          setProjectId(str(nextProject.id));
+        }
+        setAddProjectOpen(false);
+        pushToast(`已添加项目：${str(nextProject.name, path)}`, 'success');
+        refresh();
+        return next;
+      }, [rpc, pushToast, refresh]);
+
       const openJob = React.useCallback((id) => {
         const jobId = str(id);
         if (!jobId) return;
@@ -3628,6 +3715,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             link,
             onSwitchProject: switchProject,
             onNewReview: () => setLaunchOpen(true),
+            onAddProject: () => setAddProjectOpen(true),
             onOpenSettings: () => setSettingsOpen(true),
           }),
           h(TabBar, {
@@ -3663,7 +3751,9 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
               onRetry: retryJob,
               onDelete: deleteJob,
             }) : null,
-            view === 'projects' ? h(ProjectsView, { snapshot, onSwitchProject: switchProject }) : null,
+            view === 'projects' ? h(ProjectsView, {
+              snapshot, onSwitchProject: switchProject, onAddProject: () => setAddProjectOpen(true),
+            }) : null,
             view === 'architecture' ? h(ArchitectureView, { snapshot, connection }) : null,
             view === 'flow' ? h(FlowView, { snapshot, connection }) : null,
             view === 'detail' ? h(DetailView, {
@@ -3691,6 +3781,11 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
               refresh();
             },
           }) : null,
+          h(AddProjectDialog, {
+            open: addProjectOpen,
+            onClose: () => setAddProjectOpen(false),
+            onSubmit: addProject,
+          }),
           settingsOpen ? h(SettingsDrawer, {
             snapshot,
             connection,

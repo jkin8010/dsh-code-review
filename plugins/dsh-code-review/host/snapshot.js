@@ -1,10 +1,12 @@
 import { existsSync } from 'node:fs';
+import { readdir, stat } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { extname, join } from 'node:path';
 import {
-  addDays, countFindings, dateKey, dayList, errorText, hash, maxSeverity, moduleOfPath,
-  nowIso, pct, severityRank, trimText,
+  addDays, atomicWriteJson, countFindings, dateKey, dayList, errorText, hash, maxSeverity,
+  moduleOfPath, nowIso, pct, readJsonFile, severityRank, trimText,
 } from './shared.js';
-import { projectId, projectName } from './config.js';
+import { expandHome, projectId, projectName } from './config.js';
 import { readProjectFile, walkSourceFiles, SOURCE_EXT } from './files.js';
 
 const LANGUAGE_BY_EXT = new Map([
@@ -98,6 +100,46 @@ const PROJECT_TTL = 5 * 60_000;
 const CURRENT_TTL = 60_000;
 const HEALTH_TTL = 60_000;
 const GRAPH_TTL = 10 * 60_000;
+const WORKSPACE_TTL = 60_000;
+const DSH_HOME = process.env.DSH_HOME || join(homedir(), '.dsh');
+const SKIP_SCAN_DIRS = new Set([
+  'node_modules', 'dist', 'build', 'out', 'coverage', '.git', '.next', '.nuxt',
+  'vendor', 'target', '__pycache__', '.venv', 'venv', 'Pods', '.idea', '.cache',
+  '.pnpm-store', '.dsh-market', '.plugin-manager',
+]);
+
+/**
+ * Discover repositories under the configured roots to `depth` levels.
+ * Reviewing arbitrary workspaces means the plugin must also find repos nested
+ * one level below a group directory (for example `<workspace>/qise-tech/repo`).
+ */
+async function scanRepos(roots, depth = 2, limit = 40) {
+  const found = [];
+  const queue = (roots ?? []).map((root) => [root, 0]);
+  const seen = new Set();
+  while (queue.length && found.length < limit && seen.size < limit * 8) {
+    const [dir, level] = queue.shift();
+    if (!dir || seen.has(dir)) continue;
+    seen.add(dir);
+    if (existsSync(join(dir, '.git'))) {
+      found.push(dir);
+      continue;
+    }
+    if (level >= depth) continue;
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      if (entry.name.startsWith('.') || SKIP_SCAN_DIRS.has(entry.name)) continue;
+      queue.push([join(dir, entry.name), level + 1]);
+    }
+  }
+  return found;
+}
 
 const PUBLIC_JOB_FIELDS = [
   'id', 'seq', 'projectId', 'projectName', 'projectPath', 'projectKind', 'type',
@@ -318,40 +360,100 @@ export function createSnapshot({
     }
   }
 
+  const addedProjectFile = join(config.stateDir, 'projects.json');
+  let addedProjectPaths = null;
+  let workspaceCache = { at: 0, paths: [] };
+
+  async function loadAddedProjects() {
+    if (addedProjectPaths) return addedProjectPaths;
+    const data = readJsonFile(addedProjectFile, null);
+    addedProjectPaths = Array.isArray(data?.paths)
+      ? data.paths.filter((path) => typeof path === 'string' && path.trim())
+      : [];
+    return addedProjectPaths;
+  }
+
+  async function saveAddedProjects() {
+    try {
+      await atomicWriteJson(addedProjectFile, { paths: addedProjectPaths ?? [] });
+    } catch (error) {
+      log('warn', `cannot persist added projects: ${errorText(error)}`);
+    }
+  }
+
+  /** Workspaces the user opened in DSH are projects too. */
+  async function dshWorkspacePaths(force = false) {
+    const now = Date.now();
+    if (!force && now - workspaceCache.at < WORKSPACE_TTL) return workspaceCache.paths;
+    const paths = [];
+    try {
+      const data = readJsonFile(join(DSH_HOME, 'storages', 'workspace.json'), null);
+      const table = data?.tables?.workspaces ?? {};
+      for (const record of Object.values(table)) {
+        if (typeof record?.path === 'string' && record.path) paths.push(record.path);
+      }
+    } catch {
+      /* a missing workspace store is not fatal */
+    }
+    workspaceCache = { at: now, paths: paths.slice(0, 80) };
+    return workspaceCache.paths;
+  }
+
+  function projectActivity(project) {
+    return Math.max(
+      Date.parse(project?.lastReviewAt ?? '') || 0,
+      Date.parse(project?.lastCommitAt ?? project?.committedAt ?? '') || 0,
+    );
+  }
+
   async function refreshProjects(force = false) {
     if (state.refreshing && !force) return state.refreshing;
     const now = Date.now();
     if (!force && now - state.projectsAt < PROJECT_TTL && state.order.length) return;
     state.refreshing = (async () => {
-      // Key projects by canonical path: discovery and the configured default
-      // may both name the same checkout, and an id drift would duplicate cards.
+      await loadAddedProjects();
+      // Union every project source; a review of an ad-hoc project must stay in
+      // the picker even when it is outside projectRoots.
       const paths = new Map();
-      const addPath = (path) => {
+      const addPath = (value) => {
+        if (typeof value !== 'string') return;
+        const path = value.trim();
         if (!path) return;
-        paths.set(String(path), projectId(path));
+        paths.set(path, projectId(path));
       };
-      const defaultPath = config.defaultProjectPath;
-      addPath(defaultPath);
-      for (const extra of config.extraProjects ?? []) addPath(extra);
+      addPath(config.defaultProjectPath);
+      for (const path of config.extraProjects ?? []) addPath(path);
+      for (const path of addedProjectPaths ?? []) addPath(path);
+      for (const path of await dshWorkspacePaths(force)) addPath(path);
+      for (const job of jobs.list()) addPath(job.projectPath);
+      let discovered = [];
       try {
-        const discovered = await git.discoverProjects({
-          roots: config.projectRoots,
-          exclude: config.excludeProjects,
-          limit: 12,
-        });
-        for (const project of discovered ?? []) addPath(project?.path);
+        discovered = await scanRepos(
+          (config.projectRoots ?? []).map((root) => expandHome(root)),
+          config.projectDepth ?? 2,
+          config.maxProjects ?? 40,
+        );
       } catch (error) {
         log('warn', `project discovery failed: ${errorText(error)}`);
-        state.health.git = { state: 'error', projects: state.order.length, error: errorText(error), checkedAt: nowIso() };
       }
+      for (const path of discovered) addPath(path);
+
+      const maxProjects = Math.max(1, Math.min(80, Number(config.maxProjects) || 40));
+      const reviewed = new Set(jobs.list().map((job) => job.projectPath));
+      const added = new Set(addedProjectPaths ?? []);
+      const ranked = [...paths.entries()].sort((a, b) => {
+        const priority = (path) => (path === config.defaultProjectPath ? 4 : 0)
+          + (added.has(path) ? 3 : 0)
+          + (reviewed.has(path) ? 2 : 0)
+          + (path === state.projects.get(state.currentId)?.path ? 1 : 0);
+        return priority(b[0]) - priority(a[0]);
+      }).slice(0, maxProjects);
 
       const currentId = state.currentId;
-      const currentPath = [...paths.entries()].find(([, id]) => id === currentId)?.[0] ?? defaultPath;
-      const entries = [...paths.entries()].map(([path, id]) => [id, path]);
+      const currentPath = [...paths.entries()].find(([, id]) => id === currentId)?.[0]
+        ?? config.defaultProjectPath;
       const results = new Map();
-      // Inspect the current project fully (one-year heatmap + modules); every
-      // other project gets a light summary so the first paint stays fast.
-      const queue = entries.slice(0, 12);
+      const queue = ranked.map(([path, id]) => [id, path]);
       const workers = 3;
       await Promise.all(Array.from({ length: workers }, async () => {
         while (queue.length) {
@@ -361,9 +463,11 @@ export function createSnapshot({
           try {
             const cached = state.projects.get(id);
             const isCurrent = path === currentPath;
-            if (cached && !force && !isCurrent) {
-              results.set(id, cached);
-              continue;
+            if (cached && !force) {
+              if (!isCurrent || cached._full) {
+                results.set(id, cached);
+                continue;
+              }
             }
             const view = await inspectOne(path, {
               days: isCurrent ? config.heatmapDays : 90,
@@ -384,19 +488,21 @@ export function createSnapshot({
         }
       }));
 
-      for (const [id, view] of results) state.projects.set(id, view);
+      if (currentPath && results.has(projectId(currentPath)) && !results.has(currentId)) {
+        state.currentId = projectId(currentPath);
+      }
+      state.projects = new Map(results);
       state.order = [...results.keys()].sort((a, b) => {
         const left = state.projects.get(a);
         const right = state.projects.get(b);
-        return String(right?.lastCommitAt ?? right?.committedAt ?? '')
-          .localeCompare(String(left?.lastCommitAt ?? left?.committedAt ?? ''));
+        return projectActivity(right) - projectActivity(left);
       });
       if (!state.projects.has(state.currentId) && state.order.length) state.currentId = state.order[0];
       state.projectsAt = Date.now();
       state.health.git = {
         state: state.order.length ? 'ok' : 'degraded',
         projects: state.order.length,
-        error: state.order.length ? null : '未发现 Git 项目，请检查 projectRoots',
+        error: state.order.length ? null : '未发现项目：可在项目页添加项目路径，或检查 projectRoots',
         checkedAt: nowIso(),
       };
       state.version += 1;
@@ -404,6 +510,57 @@ export function createSnapshot({
       state.refreshing = null;
     });
     return state.refreshing;
+  }
+
+  /** Add a project by absolute path (persisted in `<stateDir>/projects.json`). */
+  async function addProjectPath(rawPath) {
+    const path = expandHome(String(rawPath ?? '').trim());
+    if (!path) throw Object.assign(new Error('请填写项目路径'), { code: 'code-review/bad-request' });
+    let info;
+    try {
+      info = await stat(path);
+    } catch {
+      throw Object.assign(new Error(`路径不存在：${path}`), { code: 'code-review/not-found' });
+    }
+    if (!info.isDirectory()) {
+      throw Object.assign(new Error(`不是目录：${path}`), { code: 'code-review/bad-request' });
+    }
+    await loadAddedProjects();
+    if (!addedProjectPaths.includes(path)) {
+      addedProjectPaths.push(path);
+      await saveAddedProjects();
+    }
+    const id = projectId(path);
+    try {
+      const view = await inspectOne(path, { days: config.heatmapDays, light: false });
+      view._full = true;
+      state.projects.set(id, view);
+      if (!state.order.includes(id)) state.order.unshift(id);
+      state.currentId = id;
+      state.currentAt = Date.now();
+      state.projectsAt = Date.now();
+      state.version += 1;
+      return view;
+    } catch (error) {
+      throw Object.assign(new Error(`无法读取项目 ${path}：${errorText(error)}`), { code: 'code-review/project-failed' });
+    }
+  }
+
+  async function removeProjectPath(rawPath) {
+    const path = expandHome(String(rawPath ?? '').trim());
+    await loadAddedProjects();
+    addedProjectPaths = addedProjectPaths.filter((item) => item !== path);
+    await saveAddedProjects();
+    const id = projectId(path);
+    const project = state.projects.get(id);
+    const reviewed = jobs.list().some((job) => job.projectPath === path);
+    if (project && !reviewed && id !== state.currentId) {
+      state.projects.delete(id);
+      state.order = state.order.filter((item) => item !== id);
+    }
+    state.projectsAt = 0;
+    state.version += 1;
+    return true;
   }
 
   async function refreshCurrent(force = false) {
@@ -586,6 +743,8 @@ export function createSnapshot({
       ok: true,
       config: {
         projectRoots: config.projectRoots,
+        projectDepth: config.projectDepth ?? 2,
+        addedProjects: [...(addedProjectPaths ?? [])],
         defaultProjectId: state.currentId,
         defaultProjectPath: config.defaultProjectPath,
         pollSeconds: config.pollSeconds,
@@ -727,6 +886,8 @@ export function createSnapshot({
     build,
     refreshAll,
     getProject,
+    addProjectPath,
+    removeProjectPath,
     getGraph,
     getLlmState,
     invalidateGraphs,
