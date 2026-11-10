@@ -2,12 +2,13 @@
     - id: qise-code-review
       name: '@jkin8010/dsh-code-review'
       config:
-        # 自动发现这些目录下的 git 项目（直接子目录）。
+        # 默认工作区：自动发现其下有 .git 的直接子目录
         projectRoots:
           - /Users/jkin/workspace/jkin8010
-        # 额外纳入的项目目录（可不在 projectRoots 下、也可是非 Git 目录）。
-        extraProjects: []
-        # 空 = 最近提交的已发现项目。
+        # 额外纳入的项目（可非 Git）：当前项目/插件工作区
+        extraProjects:
+          - /Users/jkin/workspace/jkin8010/dhs-feishu-plugin
+        # 空 = 最近提交的已发现项目；也可填某个项目绝对路径作为固定默认
         defaultProjectPath: ''
         engine: auto
         pollSeconds: 2
