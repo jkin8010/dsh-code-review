@@ -1,0 +1,62 @@
+{
+  "name": "@qise/dsh-code-review",
+  "version": "0.1.1",
+  "private": true,
+  "type": "module",
+  "description": "代码评审中心：基于 alibaba/open-code-review 的 DeepSeek Harness 插件，支持当前改动/提交/分支、项目架构、代码模块与信息流业务工作流评审，提供实时进度与动态、GitHub 风格提交热力图与评审统计。",
+  "license": "Apache-2.0",
+  "author": "jkin8010",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jkin8010/dsh-code-review.git"
+  },
+  "homepage": "https://github.com/jkin8010/dsh-code-review#readme",
+  "bugs": {
+    "url": "https://github.com/jkin8010/dsh-code-review/issues"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "dsh-plugin",
+    "code-review",
+    "open-code-review",
+    "ai-code-review",
+    "static-analysis",
+    "architecture-review"
+  ],
+  "exports": {
+    ".": "./plugins/dsh-code-review/index.js",
+    "./client": "./plugins/dsh-code-review/client.js",
+    "./locale/*.json": "./plugins/dsh-code-review/locale/*.json",
+    "./icon": "./plugins/dsh-code-review/icon.svg"
+  },
+  "files": [
+    "plugins/dsh-code-review/index.js",
+    "plugins/dsh-code-review/client.js",
+    "plugins/dsh-code-review/cordis.patch.yml",
+    "plugins/dsh-code-review/host/*.js",
+    "plugins/dsh-code-review/locale/*.json",
+    "plugins/dsh-code-review/icon.svg",
+    "plugins/dsh-code-review/README.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./plugins/dsh-code-review/cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-slots"
+      ]
+    }
+  }
+}

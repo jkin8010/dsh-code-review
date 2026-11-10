@@ -63,19 +63,20 @@ DSH 左侧栏入口 + 整页**代码评审工作台**：把 [alibaba/open-code-r
 ### 一键安装（把下面这行 Prompt 发给 DSH）
 
 ```text
-请安装 DSH 插件 dsh-code-review：先执行 git clone https://github.com/jkin8010/dsh-code-review.git ~/dsh-code-review，再用 plugin_manager 的 install_bundle 安装 ~/dsh-code-review/plugins/dsh-code-review，安装完成后检查插件是否启用、ocr --version 与 LLM 引擎状态，并告诉我是否需要重启 DSH。
+请安装 DSH 插件 https://github.com/jkin8010/dsh-code-review ：用 plugin_manager 的 install_bundle 直接安装这个 Git 仓库，安装完成后检查插件是否启用、ocr --version 与 LLM 引擎状态，并告诉我是否需要重启 DSH。
 ```
 
 ### 手动安装
 
-```bash
+```text
 # 在 DSH 里（Web 侧栏 Plugins 或 agent tool）：
-plugin_manager → action: install_bundle, target: <本目录绝对路径>
-# 本插件是 profile bundle；HMR 开启时无需重启，刷新页面即出现侧栏入口。
+plugin_manager → action: install_bundle
+                 target: https://github.com/jkin8010/dsh-code-review
+# 或本地 clone 后 target: <仓库根目录绝对路径>
+# 仓库根 package.json 是 bundle 清单；本目录是其 exports 指向的插件实现。
 ```
 
-手工方式：把包加入 profile `package.json` 的 `dsh.profile.bundles` 与 `cordis.patch.yml` 的 insert 列表，
-`pnpm install` 后重启 DSH。
+> 本插件是 profile bundle；HMR 开启时无需重启，刷新页面即出现侧栏入口。
 
 系统依赖：
 

@@ -35,26 +35,22 @@
 ### 一键安装（把下面这行 Prompt 发给 DSH）
 
 ```text
-请安装 DSH 插件 dsh-code-review：先执行 git clone https://github.com/jkin8010/dsh-code-review.git ~/dsh-code-review，再用 plugin_manager 的 install_bundle 安装 ~/dsh-code-review/plugins/dsh-code-review，安装完成后检查插件是否启用、ocr --version 与 LLM 引擎状态，并告诉我是否需要重启 DSH。
+请安装 DSH 插件 https://github.com/jkin8010/dsh-code-review ：用 plugin_manager 的 install_bundle 直接安装这个 Git 仓库，安装完成后检查插件是否启用、ocr --version 与 LLM 引擎状态，并告诉我是否需要重启 DSH。
 ```
 
+> 仓库根 `package.json` 就是 DSH bundle 声明，因此可以**直接从 Git URL 安装**（插件代码在 `plugins/dsh-code-review/`）。
 > `plugin_manager` 返回 `restart-required` 时重启 DSH 即可生效；返回已应用则刷新页面。
 
 ### 手动安装
 
 ```bash
-# 1) 安装 open-code-review CLI
+# 1) 安装 open-code-review CLI（可选；不装则走离线结构分析）
 npm i -g @alibaba-group/open-code-review
 
-# 2) 克隆本仓库
-git clone https://github.com/jkin8010/dsh-code-review.git
-```
-
-在 DSH 中安装插件（Web 侧栏 Plugins 或 agent tool）：
-
-```text
-plugin_manager → action: install_bundle
-                 target: /绝对路径/dsh-code-review/plugins/dsh-code-review
+# 2) 在 DSH 中安装（Web 侧栏 Plugins 或 agent tool）；以下两种 target 等价：
+#    - Git URL:      https://github.com/jkin8010/dsh-code-review
+#    - 本地 clone 根: /绝对路径/dsh-code-review
+plugin_manager → action: install_bundle, target: https://github.com/jkin8010/dsh-code-review
 ```
 
 > 本插件是 profile bundle；HMR 开启时可热加载，否则重启 DSH 后生效。
@@ -102,7 +98,8 @@ ocr llm test           # 验证连通性
 ## 仓库结构
 
 ```
-plugins/dsh-code-review/        # 插件包（安装目标）
+package.json                    # DSH bundle 根清单：dsh.bundle → plugins/dsh-code-review/cordis.patch.yml
+plugins/dsh-code-review/        # 插件实现（Host/Client/安装包）
   index.js                     # Host：/api/code-review RPC、生命周期、依赖装配
   client.js                    # Web 整页 UI（React.createElement，无构建步骤）
   host/                        # git / ocr / 分析器 / 任务状态机 / 快照 / 持久化 / 委托评审

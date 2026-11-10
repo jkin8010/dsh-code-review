@@ -95,7 +95,8 @@ plugins/dsh-code-review/
 已于本机 desktop profile 完成：
 
 - `~/.dsh/profiles/desktop/package.json`：新增依赖
-  `"@qise/dsh-code-review": "link:/Users/jkin/workspace/jkin8010/dhs-feishu-plugin/plugins/dsh-code-review"`
+  `"@qise/dsh-code-review": "link:/Users/jkin/workspace/jkin8010/dhs-feishu-plugin"`
+  （仓库根 `package.json` 是 bundle 清单，exports 指向 `plugins/dsh-code-review/`）
   和 `dsh.profile.bundles` 末位 `@qise/dsh-code-review`；
 - `~/.dsh/profiles/desktop/node_modules/@qise/dsh-code-review` 已链接；
 - `~/.dsh/profiles/desktop/cordis.patch.yml` 追加插件配置（projectRoots、extraProjects、ocr 选项）。
@@ -109,3 +110,8 @@ plugins/dsh-code-review/
 2. 总览应出现项目卡与热力图；点「新建 Review」跑一次「代码模块」评审（选 `dsh-code-review/host`），
    观察实时队列、阶段进度与详情页 findings。
 3. 如需 OCR 原生 AI 评审：`ocr config provider` 配置后，设置页「测试 LLM」应通过，引擎自动切到 `ocr`。
+
+### 从 Git URL 安装
+
+仓库根 `package.json` 声明了 `dsh.bundle`，因此 `plugin_manager` 可直接安装：
+`install_bundle target: https://github.com/jkin8010/dsh-code-review`（或本地 clone 根目录）。
