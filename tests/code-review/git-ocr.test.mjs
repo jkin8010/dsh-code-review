@@ -21,9 +21,9 @@ import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import {
-  chmod, mkdir, readFile, readdir, rm, writeFile,
+  chmod, mkdir, mkdtemp, readFile, readdir, rm, writeFile,
 } from 'node:fs/promises';
-import { homedir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -40,6 +40,15 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../..');
 const TMP = join(HERE, '.tmp');
 const PROJECT_TITLE = 'plugins/dsh-agent-cockpit';
+
+// The workspace itself may be a git repository, so a non-git fixture must live
+// outside it; tests that assert kind=dir / not-a-git-repo use this directory.
+const NON_GIT = await mkdtemp(join(tmpdir(), 'ocr-nongit-'));
+await mkdir(join(NON_GIT, 'src'), { recursive: true });
+await writeFile(join(NON_GIT, 'src', 'a.js'), 'export const a = 1;\n');
+await writeFile(join(NON_GIT, 'src', 'b.py'), 'def b():\n    return 2\n');
+await writeFile(join(NON_GIT, 'README.md'), '# fixture\n');
+await writeFile(join(NON_GIT, 'icon.svg'), '<svg/>\n');
 
 const REPO_CANDIDATES = [
   join(homedir(), 'workspace', 'jkin8010', 'mopng-api'),
@@ -132,7 +141,7 @@ async function main() {
   });
 
   await check('非 git 目录返回 kind=dir 且 error 为中文说明', async () => {
-    const meta = await gitMeta({ repoPath: ROOT });
+    const meta = await gitMeta({ repoPath: NON_GIT });
     assert.equal(meta.kind, 'dir');
     assert.ok(typeof meta.error === 'string' && meta.error.length > 0);
     assert.equal(meta.head, '');
@@ -194,7 +203,7 @@ async function main() {
   });
 
   await check('非 git 目录的热力图带 error 而不抛异常', async () => {
-    const heatmap = await gitHeatmap({ repoPath: ROOT, days: 30 });
+    const heatmap = await gitHeatmap({ repoPath: NON_GIT, days: 30 });
     assert.equal(heatmap.days.length, 30);
     assert.ok(typeof heatmap.error === 'string' && heatmap.error.length > 0);
     assert.equal(heatmap.totalCommits, 0);
@@ -279,7 +288,7 @@ async function main() {
   });
 
   await check('inspectProject 对非 git 目录返回空视图与 error', async () => {
-    const view = await inspectProject({ repoPath: ROOT, heatmapDays: 30 });
+    const view = await inspectProject({ repoPath: NON_GIT, heatmapDays: 30 });
     assert.equal(view.kind, 'dir');
     assert.ok(typeof view.error === 'string' && view.error.length > 0);
     assert.equal(view.fileCount, 0);
@@ -397,9 +406,9 @@ async function main() {
   // -------------------------------------------------------------------------
   await check('ocr scan --preview 扫描 plugins/dsh-agent-cockpit', async () => {
     const plan = await preview({
-      projectPath: ROOT,
+      projectPath: NON_GIT,
       type: 'module',
-      scope: { paths: [PROJECT_TITLE, `./${PROJECT_TITLE}`] },
+      scope: { paths: ['src', 'README.md'] },
       config,
       env,
     });
@@ -423,7 +432,7 @@ async function main() {
   });
 
   await check('preview 对非 git 目录的 review 返回 not-a-git-repo', async () => {
-    const plan = await preview({ projectPath: ROOT, type: 'workspace', config, env });
+    const plan = await preview({ projectPath: NON_GIT, type: 'workspace', config, env });
     assert.equal(plan.ok, false);
     assert.equal(plan.error, 'not-a-git-repo');
     assert.deepEqual(plan.files, []);
@@ -512,7 +521,7 @@ async function main() {
   section('ocr stub（本地桩，无网络 / 无 LLM）');
   // -------------------------------------------------------------------------
   const stubDir = join(TMP, 'stub');
-  const stubPath = join(stubDir, 'ocr');
+  const stubPath = join(stubDir, 'ocr.cjs');
   await mkdir(stubDir, { recursive: true });
   const stubSource = String.raw`#!/usr/bin/env node
 'use strict';
