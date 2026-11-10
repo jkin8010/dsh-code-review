@@ -1,6 +1,6 @@
 # dsh-code-review 交付说明
 
-> 插件包：`plugins/dsh-code-review`（`@jkin8010/dsh-code-review` v0.1.2）
+> 插件包：`plugins/dsh-code-review`（`@jkin8010/dsh-code-review` v0.2.0）
 > 依赖：`ocr`（`@alibaba-group/open-code-review`）v1.13.6、`git`、Node 22+
 > 本机已安装到 desktop profile；**重启 DSH 后生效**（见文末）。
 
@@ -74,6 +74,7 @@ plugins/dsh-code-review/
 |---|---|---|
 | 引擎状态机 / 四类评审 / 快照 / 持久化 | `node tests/code-review/engine-selftest.mjs` | ✅ |
 | 委托模式（OCR 选文件 + DSH 模型） | `node tests/code-review/delegate-selftest.mjs` | ✅ |
+| 对话内工具 `code_review`（start/status/detail/list） | `node tests/code-review/tool-selftest.mjs` | ✅ |
 | Host RPC 全链路（真实 git/ocr/analyze + 假 Cordis） | `node tests/code-review/host-selftest.mjs` | ✅ |
 | git/热力图/OCR 适配（真实仓库 + 真实 ocr preview） | `node tests/code-review/git-ocr.test.mjs` | ✅ 33/33 |
 | 架构/模块/信息流/diff 分析 | `node tests/code-review/analyze.test.mjs` | ✅ 8/8 |
@@ -81,7 +82,18 @@ plugins/dsh-code-review/
 
 截图：`docs/screenshots/code-review-{overview,reviews,detail,launch,projects,architecture,flow,settings}.png`。
 
-## 5. 已知限制
+## 5. 对话内使用
+
+安装/重启后，插件注册模型工具 `code_review`，可在任意项目会话中让 Agent 直接启动评审并在对话里返回 findings：
+
+- 「用代码评审中心评审当前项目的架构」
+- 「review 当前改动，只看 high 及以上」
+- 「评审 host 模块」 / 「从信息流角度 review 消息链路」
+- 「查看最近一次评审的详情」
+
+`action=status/detail/list` 查询进度与历史，`wait:false` 可后台执行。完整界面仍在侧栏「代码评审中心」。
+
+## 6. 已知限制
 
 - OCR 的 LLM 未配置时只能结构分析或委托模式；OCR 的 `ocr review` 需要真实 API Key。
 - 离线分析是启发式（正则/括号匹配，非 AST），对动态语言/复杂 DI 的调用链只连一层，可能漏报或误报；已在规则上做保守收敛。
@@ -90,7 +102,7 @@ plugins/dsh-code-review/
 - 热力图按 `今天-(days-1)` 开窗，跨时区 author date 与 `--since` 边界可能差 1 天（已过滤到窗口内）。
 - `language` 只识别内置扩展名表；full inspect 受 4000 文件上限、LOC 跳过二进制与 >2MB 文件。
 
-## 6. 安装状态与本机启用
+## 7. 安装状态与本机启用
 
 已于本机 desktop profile 完成：
 

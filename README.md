@@ -88,6 +88,34 @@ ocr llm test           # 验证连通性
 
 ## 使用
 
+### 在项目对话里直接 Review（推荐）
+
+插件注册了模型工具 **`code_review`**（安装/重启后生效）。在任意项目会话里直接说一句即可：
+
+- 「用代码评审中心评审当前项目的架构」
+- 「review 当前改动，只看 high 及以上」
+- 「评审 `plugins/dsh-code-review/host` 这个模块」
+- 「从信息流角度 review 当前项目的消息链路」
+- 「查看最近一次评审的详情」
+
+Agent 会调用 `code_review` → `start`（默认等待评审完成）→ 在对话里返回问题摘要与 findings；完整分组、代码建议和覆盖率仍在侧栏「代码评审中心」查看。
+
+工具参数（Agent 自动填写，也可直接要求）：
+
+| 参数 | 说明 |
+|---|---|
+| `action` | `start` / `status` / `detail` / `list` |
+| `project_path` | 省略 = 当前会话工作目录（当前项目） |
+| `type` | `workspace` / `commit` / `range` / `architecture` / `module` / `flow`；省略时有 `paths` 走模块评审，否则走项目架构 |
+| `scope` | `paths`（模块）/ `commit` / `from`+`to` |
+| `options` | `effort`、`background`、`exclude`、`max_tokens_budget` |
+| `wait` | 默认 `true`，等待完成；`false` 立即返回任务 id |
+| `job_id` / `severity` / `limit` | 查询详情时使用 |
+
+> 不想要等待时可说「后台跑，跑完告诉我」，Agent 会用 `wait:false`，之后再用 `status`/`detail` 取结果。
+
+### 在页面里使用
+
 1. 左侧栏打开「代码评审中心」，在顶部选择项目（`projectRoots` 自动发现 + `extraProjects`）。
 2. 点「新建 Review」，选择类型：
    - 当前改动 / 单次提交 / 分支对比：填 commit 或 from/to

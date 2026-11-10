@@ -381,6 +381,28 @@ export function createSnapshot({ config, store, jobs, git, ocr, logger }) -> { b
 
 错误：`{ ok:false, error:{ code:'code-review/<slug>', message } }`，不抛异常给客户端。
 
+### 模型工具 `code_review`
+
+Host 通过 `ctx.tools.register` 注册（无 tools 服务的 profile 自动跳过），用于项目对话内触发评审：
+
+```js
+{
+  name: 'code_review',
+  parameters: {
+    action: 'start|status|detail|list',        // required
+    project_path?: string,                     // 省略 = 当前会话 cwd
+    type?: 'workspace|commit|range|architecture|module|flow',
+    scope?: { paths?: string[], commit?, from?, to? },
+    options?: { effort?, background?, exclude?, max_tokens_budget? },
+    wait?: boolean,                            // start 默认 true，等待完成（≤12min）
+    job_id?: string, severity?: string, limit?: number,
+  },
+  output: { ok, action, job, findings?, files?, jobs?, error?, timedOut?, cancelled? }
+}
+```
+`start` 直接复用 `jobs.start`，等待完成后用 `jobs.getFull` 返回摘要与 findings；`wait:false` 立即返回任务 id。
+工具输出为纯 JSON，`output.render` 渲染成对话文本；`execute` 内不抛异常，失败以 `ok:false` 返回。
+
 ---
 
 ## 5. Client UI（Teammate C）

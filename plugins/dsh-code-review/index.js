@@ -23,6 +23,7 @@ import * as analyze from './host/analyze.js';
 import { findOcrBinary, normalizeConfig, resolveOcrEnv } from './host/config.js';
 import { createJobs } from './host/jobs.js';
 import { createLlmReviewer } from './host/llm-review.js';
+import { registerCodeReviewTool } from './host/tool.js';
 import { createSnapshot, publicJob } from './host/snapshot.js';
 import { createStore } from './host/store.js';
 import { errorText } from './host/shared.js';
@@ -225,6 +226,9 @@ export function apply(ctx, rawConfig) {
     projectResolver: (args) => snapshot.getProject(args),
     getLlmState: () => snapshot.getLlmState(),
   });
+
+  // Conversational entry: one model-facing tool backing "在对话里 review 当前项目".
+  registerCodeReviewTool(ctx, { jobs: jobsApi, config, logger });
 
   const handler = async (method, payload = {}) => {
     switch (method) {
