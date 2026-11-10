@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { accessSync, constants, readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { delimiter, isAbsolute, join, resolve } from 'node:path';
+import { delimiter, dirname, isAbsolute, join, resolve } from 'node:path';
 
 /**
  * Plugin configuration: defaults plus normalization.
@@ -53,9 +53,27 @@ export function expandHome(value) {
   return text;
 }
 
+/** `undefined`/`null`/`''`/whitespace mean "not configured" rather than `0`. */
+function isUnset(value) {
+  return value === undefined || value === null || (typeof value === 'string' && !value.trim());
+}
+
 function positiveInt(value, fallback, min = 1, max = Number.MAX_SAFE_INTEGER) {
+  if (isUnset(value)) return fallback;
   const number = Number(value);
   if (!Number.isFinite(number) || number < min) return fallback;
+  return Math.min(max, Math.floor(number));
+}
+
+/**
+ * Like `positiveInt` but `0` is a legal value ("no limit" for token budgets).
+ * Unset stays `0`; a negative or non-numeric value falls back to the default
+ * instead of being coerced to `0`, so a typo cannot silently mean "unlimited".
+ */
+function tokenBudget(value, fallback, max) {
+  if (isUnset(value)) return fallback;
+  const number = Number(value);
+  if (!Number.isFinite(number) || number < 0) return fallback;
   return Math.min(max, Math.floor(number));
 }
 
@@ -70,7 +88,8 @@ function stringList(value) {
 }
 
 function pickEnum(value, allowed, fallback) {
-  const text = String(value ?? '').trim().toLowerCase();
+  if (isUnset(value)) return fallback;
+  const text = String(value).trim().toLowerCase();
   return allowed.has(text) ? text : fallback;
 }
 
@@ -104,8 +123,8 @@ export function normalizeConfig(rawConfig, { hostCwd } = {}) {
       effort,
       concurrency: positiveInt(ocrRaw.concurrency, DEFAULTS.ocr.concurrency, 1, 32),
       timeoutMin: positiveInt(ocrRaw.timeoutMin, DEFAULTS.ocr.timeoutMin, 1, 240),
-      maxTokens: positiveInt(ocrRaw.maxTokens, 0, 0, 10_000_000),
-      maxTokensBudget: positiveInt(ocrRaw.maxTokensBudget, 0, 0, 100_000_000),
+      maxTokens: tokenBudget(ocrRaw.maxTokens, DEFAULTS.ocr.maxTokens, 10_000_000),
+      maxTokensBudget: tokenBudget(ocrRaw.maxTokensBudget, DEFAULTS.ocr.maxTokensBudget, 100_000_000),
       extraArgs: Array.isArray(ocrRaw.extraArgs) ? ocrRaw.extraArgs.map(String) : [],
     },
   };
@@ -156,23 +175,55 @@ function pathCandidates() {
   return list;
 }
 
-/** Resolve the `ocr` executable once; an absolute configured path wins. */
+/**
+ * Resolve the `ocr` executable; an absolute configured path wins.
+ *
+ * The scan touches every PATH entry plus the nvm version directories, so the
+ * result is memoized per configured command — startup, every review and the
+ * RPC health probe all ask the same question. A relative command name is
+ * returned as-is and resolved through PATH by execvp at spawn time, unless a
+ * matching executable is found on disk (then that absolute path is pinned).
+ */
+const ocrBinaryCache = new Map();
+
 export function findOcrBinary(config) {
   const configured = expandHome(config?.ocr?.command);
+  // Include the running Node binary so an nvm switch (and its new ocr) invalidates the cache.
+  const cacheKey = `${configured}\u0000${process.env.PATH ?? ''}\u0000${process.execPath}\u0000${process.env.NVM_BIN ?? ''}`;
+  const cached = ocrBinaryCache.get(cacheKey);
+  if (cached !== undefined) return cached;
+
+  let resolved;
   if (configured) {
-    if (isAbsolute(configured)) return executable(configured) ? configured : '';
-    return configured;
+    if (isAbsolute(configured)) {
+      resolved = executable(configured) ? configured : '';
+    } else {
+      const found = pathCandidates().map((candidate) => dirname(candidate)).find(
+        (dir) => isAbsolute(dir) && executable(join(dir, configured)),
+      );
+      resolved = found ? join(found, configured) : configured;
+    }
+  } else {
+    resolved = '';
+    for (const candidate of pathCandidates()) {
+      if (executable(candidate)) {
+        resolved = candidate;
+        break;
+      }
+    }
+    // Last resort: bare name, let execvp search PATH at spawn time.
+    if (!resolved) resolved = 'ocr';
   }
-  for (const candidate of pathCandidates()) {
-    if (executable(candidate)) return candidate;
-  }
-  // Last resort: bare name, let execvp search PATH at spawn time.
-  return 'ocr';
+  ocrBinaryCache.set(cacheKey, resolved);
+  return resolved;
 }
 
 /**
  * Environment handed to every `ocr` child process. Provider credentials that
  * live in the plugin config are injected here and never leave the Host process.
+ * `ocr.llmTokenFile` is deliberately not read here (this must stay synchronous);
+ * index.js loads it into `ocr.llmToken` at startup and ocr.js's `prepareEnv`
+ * reads the file as a fallback — both paths end up in `OCR_LLM_TOKEN`.
  */
 export function resolveOcrEnv(config, baseEnv = process.env) {
   const env = { ...baseEnv };
@@ -186,8 +237,19 @@ export function resolveOcrEnv(config, baseEnv = process.env) {
 /** Environment used to probe for LLM configuration without exposing secrets. */
 export function llmConfigSource(config, env = process.env) {
   const ocr = config?.ocr ?? {};
-  if (ocr.llmToken || ocr.llmTokenFile) return 'config';
+  if (ocr.llmToken) return 'config';
+  if (ocr.llmTokenFile) return 'file';
   if (env.OCR_LLM_TOKEN || env.OCR_LLM_URL) return 'env';
   if (env.ANTHROPIC_AUTH_TOKEN || env.ANTHROPIC_BASE_URL) return 'env';
   return 'none';
+}
+
+/** Read the OCR token once during composition; the value never changes later. */
+export function loadConfiguredToken(config) {
+  if (config?.ocr?.llmToken || !config?.ocr?.llmTokenFile) return '';
+  try {
+    return readFileSync(config.ocr.llmTokenFile, 'utf8').trim();
+  } catch {
+    return '';
+  }
 }

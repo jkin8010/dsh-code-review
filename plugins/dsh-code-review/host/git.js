@@ -14,7 +14,7 @@
  * Node built-ins only — no third-party dependency.
  */
 
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { lstat, open, readdir, stat } from 'node:fs/promises';
 import { basename, extname, join, resolve, sep } from 'node:path';
 import {
@@ -85,7 +85,10 @@ function gitEnv() {
 
 /**
  * Run one git subprocess and normalize the callback into a data object.
- * Resolves (never rejects) with `{ ok, code, stdout, stderr, error, reason }`.
+ * Resolves (never rejects) with `{ ok, code, stdout, stderr, error, reason,
+ * missing, timedOut, bufferOverflow }`. The failure kind is classified here so
+ * every caller reports "timeout" and "output too large" differently instead of
+ * folding both into a generic error.
  */
 function execGit(cwd, args, { timeout = GIT_TIMEOUT_MS, maxBuffer = GIT_MAX_BUFFER } = {}) {
   return new Promise((resolvePromise) => {
@@ -100,21 +103,158 @@ function execGit(cwd, args, { timeout = GIT_TIMEOUT_MS, maxBuffer = GIT_MAX_BUFF
       const out = typeof stdout === 'string' ? stdout : '';
       const err = typeof stderr === 'string' ? stderr : '';
       if (!error) {
-        resolvePromise({ ok: true, code: 0, stdout: out, stderr: err, error: null, reason: '' });
+        resolvePromise({
+          ok: true, code: 0, stdout: out, stderr: err, error: null, reason: '', missing: false, timedOut: false, bufferOverflow: false,
+        });
         return;
       }
+      const reason = String(error.code ?? '');
+      // Node sets `error.killed` for a timeout SIGTERM, but ENOBUFS (maxBuffer)
+      // can arrive with `killed` set too, so buffer overflow is classified
+      // first and only then is `killed` read as a timeout.
+      const bufferOverflow = reason === 'ENOBUFS' || /maxBuffer/i.test(String(error.message ?? ''));
+      const timedOut = !bufferOverflow && (reason === 'ETIMEDOUT' || Boolean(error.killed));
       resolvePromise({
         ok: false,
         code: typeof error.code === 'number' ? error.code : null,
         stdout: out,
         stderr: err,
         error: errorText(error),
-        reason: String(error.code ?? ''),
-        missing: error.code === 'ENOENT',
-        timedOut: Boolean(error.killed),
+        reason,
+        missing: reason === 'ENOENT',
+        timedOut,
+        bufferOverflow,
       });
     });
   });
+}
+
+/**
+ * Stream one git command's stdout line by line. Unlike `execFile` there is no
+ * buffer ceiling, so a year of `--numstat` history cannot be silently cut off at
+ * `maxBuffer`; the callback sees every complete line as it is produced.
+ * Resolves (never rejects) with the same failure shape as `execGit`.
+ */
+const MAX_STDOUT_LINE = 4 * 1024 * 1024;
+
+function streamGit(cwd, args, onLine, { timeout = GIT_TIMEOUT_MS } = {}) {
+  return new Promise((resolvePromise) => {
+    if (typeof onLine !== 'function') {
+      resolvePromise({
+        ok: false, code: null, stderr: '', error: 'streamGit requires an onLine callback',
+        reason: 'ECALLBACK', missing: false, timedOut: false, bufferOverflow: false,
+      });
+      return;
+    }
+    let child;
+    try {
+      child = spawn('git', args, {
+        cwd, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true, env: gitEnv(),
+      });
+    } catch (error) {
+      resolvePromise({
+        ok: false, code: null, stderr: '', error: errorText(error), reason: String(error?.code ?? ''),
+        missing: false, timedOut: false, bufferOverflow: false,
+      });
+      return;
+    }
+    let settled = false;
+    let timedOut = false;
+    let overflowed = false;
+    let stderr = '';
+    let pending = '';
+    const finish = (error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (!error) {
+        resolvePromise({
+          ok: true, code: 0, stderr, error: null, reason: '', missing: false, timedOut: false, bufferOverflow: false,
+        });
+        return;
+      }
+      const reason = String(error.code ?? '');
+      resolvePromise({
+        ok: false,
+        code: typeof error.code === 'number' ? error.code : null,
+        stderr,
+        error: errorText(error),
+        reason,
+        missing: reason === 'ENOENT',
+        timedOut: timedOut || reason === 'ETIMEDOUT',
+        bufferOverflow: overflowed,
+      });
+    };
+    const timer = setTimeout(() => {
+      timedOut = true;
+      try {
+        child.kill('SIGTERM');
+      } catch {
+        /* already gone */
+      }
+      // A wedged git must not keep the scan promise (and its caller) pending.
+      setTimeout(() => {
+        try {
+          child.kill('SIGKILL');
+        } catch {
+          /* already gone */
+        }
+      }, 5_000).unref?.();
+    }, timeout);
+    timer.unref?.();
+    child.stdout.setEncoding('utf8');
+    child.stdout.on('data', (chunk) => {
+      pending += chunk;
+      // A single pathological line must not grow without bound: treat it as a
+      // buffer overflow and kill git instead of exhausting host memory.
+      if (pending.length > MAX_STDOUT_LINE) {
+        overflowed = true;
+        pending = '';
+        try {
+          child.kill('SIGKILL');
+        } catch {
+          /* already gone */
+        }
+        finish(Object.assign(new Error('git output line exceeds 4MB'), { code: 'ENOBUFS' }));
+        return;
+      }
+      let index = pending.indexOf('\n');
+      while (index >= 0) {
+        const line = pending.slice(0, index).replace(/\r$/, '');
+        pending = pending.slice(index + 1);
+        try {
+          onLine(line);
+        } catch {
+          /* one malformed line must not abort the whole scan */
+        }
+        index = pending.indexOf('\n');
+      }
+    });
+    child.stderr.setEncoding('utf8');
+    child.stderr.on('data', (chunk) => {
+      if (stderr.length < 64 * 1024) stderr += chunk;
+    });
+    child.on('error', finish);
+    child.on('close', (code) => {
+      if (pending) {
+        try {
+          onLine(pending.replace(/\r$/, ''));
+        } catch {
+          /* ignore */
+        }
+      }
+      if (timedOut) finish(Object.assign(new Error('git timed out'), { code: 'ETIMEDOUT' }));
+      else if (code === 0) finish(null);
+      else finish(Object.assign(new Error(`git exited with code ${code}`), { code }));
+    });
+  });
+}
+
+function gitFailureMessage(result, fallback) {
+  if (result.timedOut) return `git 读取超时：${fallback}`;
+  if (result.bufferOverflow) return `git 输出过大（超出缓冲区）：${fallback}`;
+  if (result.missing) return '未找到 git 命令：请安装 git 并确保在 PATH 中';
+  return `${fallback}：${firstLine(result.stderr || result.error)}`;
 }
 
 function resolveRepoPath(value) {
@@ -162,11 +302,17 @@ function emptyFindings() {
   return { critical: 0, high: 0, medium: 0, low: 0, total: 0 };
 }
 
-/** Bounded-concurrency map that preserves input order and never rejects. */
-async function mapLimit(items, limit, worker) {
+/**
+ * Bounded-concurrency map that preserves input order and never rejects.
+ * A throwing worker yields `undefined` at its index (callers already skip
+ * falsy entries); the failure is also recorded in `options.errors` so the
+ * caller can tell "nothing produced" from "processing failed" and report it.
+ */
+async function mapLimit(items, limit, worker, options = {}) {
   const list = Array.from(items ?? []);
   if (!list.length) return [];
   const results = new Array(list.length);
+  const errors = Array.isArray(options.errors) ? options.errors : null;
   let cursor = 0;
   const size = Math.max(1, Math.min(limit, list.length));
   async function run() {
@@ -176,8 +322,10 @@ async function mapLimit(items, limit, worker) {
       if (index >= list.length) return;
       try {
         results[index] = await worker(list[index], index);
-      } catch {
+      } catch (error) {
         results[index] = undefined;
+        errors?.push({ index, item: list[index], error: errorText(error) });
+        options.logger?.warn?.(`mapLimit item ${index} failed: ${errorText(error)}`);
       }
     }
   }
@@ -323,26 +471,13 @@ export async function gitHeatmap({ repoPath, days = 365, limit } = {}) {
     '--pretty=format:%ad',
     `--max-count=${maxCount}`,
   ];
-  const result = await execGit(root, args, { timeout: HEATMAP_TIMEOUT_MS });
-  if (!result.ok) {
-    if (/not a git repository/i.test(result.stderr)) {
-      heatmap.error = `不是 git 仓库：${root}`;
-    } else if (result.reason === 'ENOBUFS') {
-      heatmap.error = `git 历史过大，读取被截断：请减小 heatmapDays 或降低 gitScanLimit`;
-    } else if (result.timedOut) {
-      heatmap.error = `读取 git 历史超时（${HEATMAP_TIMEOUT_MS / 1000}s）：请降低 gitScanLimit`;
-    } else {
-      heatmap.error = `读取 git 历史失败：${firstLine(result.stderr || result.error)}`;
-    }
-    return heatmap;
-  }
-
+  // Parsed while git writes: a year of numstat can exceed any fixed maxBuffer,
+  // and a truncated buffer used to shrink the statistics without an error.
   const active = new Map();
   let current = null;
   let inRange = false;
-  for (const rawLine of result.stdout.split('\n')) {
-    const line = rawLine.replace(/\r$/, '');
-    if (!line) continue;
+  const result = await streamGit(root, args, (line) => {
+    if (!line) return;
     if (/^\d{4}-\d{2}-\d{2}$/.test(line)) {
       current = line;
       // --since/--until filter by commit timestamp while %ad prints the author
@@ -354,14 +489,27 @@ export async function gitHeatmap({ repoPath, days = 365, limit } = {}) {
         entry.commits += 1;
         active.set(line, entry);
       }
-      continue;
+      return;
     }
-    if (!inRange || !current) continue;
+    if (!inRange || !current) return;
     const match = line.match(/^(\d+|-)\t(\d+|-)\t/);
-    if (!match) continue;
+    if (!match) return;
     const entry = active.get(current);
+    if (!entry) return;
     entry.insertions += match[1] === '-' ? 0 : Number(match[1]);
     entry.deletions += match[2] === '-' ? 0 : Number(match[2]);
+  }, { timeout: HEATMAP_TIMEOUT_MS });
+  if (!result.ok) {
+    if (/not a git repository/i.test(result.stderr)) {
+      heatmap.error = `不是 git 仓库：${root}`;
+    } else if (result.missing) {
+      heatmap.error = gitFailureMessage(result, '读取 git 历史失败');
+    } else if (result.timedOut) {
+      heatmap.error = `读取 git 历史超时（${HEATMAP_TIMEOUT_MS / 1000}s）：请降低 gitScanLimit`;
+    } else {
+      heatmap.error = `读取 git 历史失败：${firstLine(result.stderr || result.error)}`;
+    }
+    return heatmap;
   }
 
   let max = 0;
@@ -492,10 +640,18 @@ async function scanTrackedFiles(root, { withLoc = true } = {}) {
     };
   }
   const files = new Array(listed.files.length);
+  const mapErrors = [];
   await mapLimit(listed.files, READ_CONCURRENCY, async (relPath, index) => {
     const stats = await countFileLines(root, relPath);
     files[index] = { path: relPath, ...stats };
-  });
+  }, { errors: mapErrors });
+  // An unreadable file must not become a hole in the array: downstream LOC and
+  // module aggregation would throw on `undefined.lines`.
+  for (const failure of mapErrors) {
+    files[failure.index] = {
+      path: listed.files[failure.index], lines: 0, bytes: 0, skipped: true, binary: false, error: failure.error,
+    };
+  }
   return { ok: true, files, total: listed.total, error: null };
 }
 

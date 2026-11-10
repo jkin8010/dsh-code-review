@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { join, relative } from 'node:path';
 import { readProjectFile, walkSourceFiles } from './files.js';
 import { promisify } from 'node:util';
@@ -47,7 +48,7 @@ const STAGE_ORDER = {
   flow: ['resolve', 'structure', 'plan', 'ai', 'merge', 'report'],
 };
 function randomId() {
-  return Math.random().toString(36).slice(2, 6);
+  return randomBytes(4).toString('hex');
 }
 
 function jobId() {
@@ -77,6 +78,7 @@ export function createJobs({
   getLlmState, getEnginePlan, llmReviewer,
 } = {}) {
   const jobs = new Map();
+  const ocrEnv = () => (typeof env === 'function' ? env() : env);
   let disposed = false;
   let concurrency = 1;
   const active = new Set();
@@ -389,7 +391,7 @@ export function createJobs({
         type: job.type,
         scope,
         config,
-        env,
+        env: ocrEnv(),
       });
       if (preview?.ok) plan = preview;
       else {
@@ -414,7 +416,7 @@ export function createJobs({
           type: 'scan',
           scope: { paths: existing },
           config,
-          env,
+          env: ocrEnv(),
         });
         if (preview?.ok) plan = preview;
       }
@@ -597,7 +599,7 @@ export function createJobs({
       scope: job.scope ?? {},
       plan: job.plan,
       config: runConfig,
-      env,
+      env: ocrEnv(),
       background,
       rules,
       exclude: options.exclude ?? '',

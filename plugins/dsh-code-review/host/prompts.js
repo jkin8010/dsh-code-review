@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { trimText } from './shared.js';
 
 /**
@@ -245,7 +247,8 @@ export function buildScanAnchorPaths(type, analysis, project) {
   if (type === 'architecture') {
     const anchors = new Set();
     for (const file of ['README.md', 'package.json', 'pyproject.toml', 'go.mod', 'Cargo.toml', 'pom.xml', 'build.gradle', 'compose.yaml', 'docker-compose.yml', 'Dockerfile', '.env.example']) {
-      if (project?.path) anchors.add(file);
+      // Only cite manifest anchors that really exist in the project root.
+      if (project?.path && existsSync(join(project.path, file))) anchors.add(file);
     }
     // Entry points of the largest modules are the cheapest architecture anchors.
     const nodes = (analysis?.graph?.nodes ?? [])

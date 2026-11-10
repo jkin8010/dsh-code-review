@@ -42,6 +42,18 @@ DSH 左侧栏入口 + 整页**代码评审工作台**：把 [alibaba/open-code-r
 Agent 会启动真实评审（默认等待完成）并把问题摘要与 findings 返回在对话里；完整详情在侧栏页面。
 `action=status/detail/list` 可查询进度与历史，`wait:false` 可后台执行后再取结果。
 
+## Host 模块边界
+
+| 模块 | 职责 |
+|---|---|
+| `index.js` | 只做装配：配置归一化、服务引用、store/jobs/snapshot 构建、tool/command/RPC 注册、生命周期 |
+| `host/rpc.js` | `/api/code-review` 方法分发与错误信封 |
+| `host/engine-plan.js` | 评审引擎选择（ocr / delegate / structural） |
+| `host/service-refs.js` | `sessionController` / `workspaceRegistry` 的 per-apply 延迟引用 |
+| `host/fix.js` | 修复会话创建与提示词（RPC 与 `--fix` 共用） |
+| `host/commands.js` | `/code-review` 命令解析与执行 |
+| `host/snapshot.js` / `host/jobs.js` / `host/store.js` | 快照投影、任务执行、磁盘持久化 |
+
 ## 斜杠命令 `/code-review`
 
 在项目对话里可直接使用（参考 ocr CLI 评审类型）：

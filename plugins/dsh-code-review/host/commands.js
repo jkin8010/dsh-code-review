@@ -1,3 +1,4 @@
+import { stat } from 'node:fs/promises';
 import { isAbsolute, resolve } from 'node:path';
 import { errorText, nowIso, trimText } from './shared.js';
 import { createFixSessionForJob } from './fix.js';
@@ -109,22 +110,34 @@ function parse(raw) {
       index += 1;
       continue;
     }
-    if (token.startsWith('--')) {
+    if (token.startsWith('-')) {
       const [flag, inline] = token.includes('=') ? token.split(/=(.*)/s, 2) : [token, undefined];
-      const value = inline !== undefined ? inline : tokens[index + 1];
-      if (inline === undefined) index += 1;
+      // A following token is only a value when it is not itself a flag:
+      // `--project --async` is a missing value, not a project called "--async".
+      let value = inline;
+      if (value === undefined) {
+        const next = tokens[index + 1];
+        if (next !== undefined && !next.startsWith('-')) {
+          value = next;
+          index += 1;
+        }
+      }
       if (flag === '--project' || flag === '--path') {
         if (!value) throw new Error(`${flag} 需要项目路径`);
         args.project = value;
         args.projectExplicit = true;
       } else if (flag === '--effort') {
+        if (value === undefined) throw new Error('--effort 需要取值：low | medium | high');
         if (!['low', 'medium', 'high'].includes(String(value))) throw new Error('--effort 只支持 low | medium | high');
         args.effort = String(value);
       } else if (flag === '--background') {
-        args.background = String(value ?? '');
+        if (value === undefined) throw new Error('--background 需要评审背景文本');
+        args.background = String(value);
       } else if (flag === '--exclude') {
-        args.exclude = String(value ?? '');
+        if (value === undefined) throw new Error('--exclude 需要逗号分隔的排除规则');
+        args.exclude = String(value);
       } else if (flag === '--budget') {
+        if (value === undefined) throw new Error('--budget 需要 token 数量（0 表示不限）');
         args.budget = Math.max(0, Number(value) || 0);
       } else {
         throw new Error(`未知选项：${flag}`);
@@ -151,8 +164,20 @@ function terminal(status) {
   return status === 'completed' || status === 'failed' || status === 'cancelled';
 }
 
+const WAIT_POLL_MS = 1000;
+const WAIT_TIMEOUT_MS = 10 * 60_000;
+
+/**
+ * Sleep that also wakes on abort. The signal is checked up front because an
+ * already-aborted signal never fires its event again — without that check a
+ * cancelled review would sit through one full poll interval per loop.
+ */
 function sleep(ms, signal) {
   return new Promise((resolvePromise) => {
+    if (signal?.aborted) {
+      resolvePromise();
+      return;
+    }
     const timer = setTimeout(done, ms);
     function done() {
       clearTimeout(timer);
@@ -211,12 +236,26 @@ export function createCodeReviewCommand({
 
   async function ensureProject(path, explicit) {
     if (!explicit) return path;
+    // `resolve` has already resolved `..`; register only a real directory so a
+    // stray `@../../x` cannot make the plugin scan something outside the session.
+    let info;
+    try {
+      info = await stat(path);
+    } catch {
+      throw new Error(`项目路径不存在：${path}`);
+    }
+    if (!info.isDirectory()) throw new Error(`项目路径不是目录：${path}`);
     const project = await snapshot.addProjectPath(path);
     return project?.path ?? path;
   }
 
+  function jobList() {
+    const raw = jobs.list?.();
+    return Array.isArray(raw) ? raw.filter((job) => job && job.id) : [];
+  }
+
   function latestJob(projectPath) {
-    const list = jobs.list();
+    const list = jobList();
     if (projectPath) {
       const match = list.find((job) => job.projectPath === projectPath);
       if (match) return match;
@@ -224,19 +263,24 @@ export function createCodeReviewCommand({
     return list[0] ?? null;
   }
 
-  async function waitJob(id, signal, timeoutMs = 10 * 60_000) {
+  /**
+   * Wait for a terminal job state.
+   * @returns `{ status: 'done', job }`, `{ status: 'aborted' | 'missing' | 'timedOut', job }`
+   * — a single enum so callers cannot forget the `missing` branch.
+   */
+  async function waitJob(id, signal, { timeoutMs = WAIT_TIMEOUT_MS, pollMs = WAIT_POLL_MS } = {}) {
     const started = Date.now();
     while (Date.now() - started < timeoutMs) {
       if (signal?.aborted) {
         jobs.cancel(id);
-        return { aborted: true, job: jobs.get(id) };
+        return { status: 'aborted', job: jobs.get(id) };
       }
       const job = jobs.get(id);
-      if (!job) return { missing: true };
-      if (terminal(job.status)) return { job };
-      await sleep(1000, signal);
+      if (!job) return { status: 'missing', job: null };
+      if (terminal(job.status)) return { status: 'done', job };
+      await sleep(pollMs, signal);
     }
-    return { timedOut: true, job: jobs.get(id) };
+    return { status: 'timedOut', job: jobs.get(id) };
   }
 
   async function fixJob(job, controller) {
@@ -310,11 +354,17 @@ export function createCodeReviewCommand({
     }
 
     const wait = await waitJob(job.id, invocation?.signal);
-    const finished = (await jobs.getFull(job.id)) ?? jobs.get(job.id) ?? job;
-    if (wait.aborted) {
+    if (wait.status === 'aborted') {
       return { kind: 'error', text: `评审已取消：${job.id}` };
     }
-    if (wait.timedOut) {
+    if (wait.status === 'missing') {
+      return {
+        kind: 'error',
+        text: `评审任务已不存在：${job.id}\n可能已被清理（超出 maxJobs 上限或手动删除），请重新执行评审，或在侧栏查看最近记录。`,
+      };
+    }
+    const finished = (await jobs.getFull(job.id)) ?? jobs.get(job.id) ?? job;
+    if (wait.status === 'timedOut') {
       return {
         kind: 'success',
         text: `⏳ 评审仍在运行：${job.id}\n当前阶段：${finished.stage?.label ?? '—'}（${Math.round((finished.progress ?? 0) * 100)}%）\n完成后可在侧栏查看详情，或再次执行 /code-review status ${job.id}`,
@@ -366,10 +416,12 @@ export function createCodeReviewCommand({
       job = await jobs.getFull(job.id);
     }
     if (!job) return { kind: 'error', text: '未找到可修复的评审' };
-    if (!Array.isArray(job.findings)) job.findings = [];
-    if (!job.findings.length) return { kind: 'success', text: `评审 ${job.id} 没有需要修复的问题` };
+    // `getFull` may hand back a store-owned object: build a normalized copy
+    // instead of mutating the cached job.
+    const fixable = { ...job, findings: Array.isArray(job.findings) ? job.findings : [] };
+    if (!fixable.findings.length) return { kind: 'success', text: `评审 ${job.id} 没有需要修复的问题` };
     const controller = typeof getSessionController === 'function' ? getSessionController() : null;
-    const result = await fixJob(job, controller);
+    const result = await fixJob(fixable, controller);
     if (result?.error) return { kind: 'error', text: `创建修复会话失败：${result.error}` };
     return {
       kind: 'success',
@@ -385,7 +437,7 @@ export function createCodeReviewCommand({
 
   function runList(args) {
     const limit = Math.max(1, Math.min(20, Number(args.positional[0]) || 8));
-    const list = jobs.list().slice(0, limit);
+    const list = jobList().slice(0, limit);
     if (!list.length) return { kind: 'success', text: '还没有评审记录' };
     return {
       kind: 'success',

@@ -84,25 +84,58 @@ function numberLines(content, maxChars) {
   return kept.join('\n');
 }
 
-function normalizeComments(raw, allowedPaths) {
+const SEVERITIES = new Set(['critical', 'high', 'medium', 'low']);
+const CATEGORIES = new Set([
+  'bug', 'security', 'performance', 'maintainability', 'test', 'style', 'documentation', 'other',
+]);
+
+/**
+ * Match a model-reported path to one of the planned files. An exact hit wins;
+ * otherwise a directory-suffix hit is accepted only when it is unique —
+ * `src/a/index.js` and `test/index.js` both end with `index.js`, and picking
+ * the first would attach the finding (and its line numbers) to the wrong file.
+ */
+function resolveAllowedPath(path, allowedPaths) {
+  if (allowedPaths.has(path)) return path;
+  const matches = [...allowedPaths].filter(
+    (candidate) => candidate.endsWith(`/${path}`) || path.endsWith(`/${candidate}`),
+  );
+  return matches.length === 1 ? matches[0] : null;
+}
+
+function normalizeComments(raw, allowedPaths, { onDrop } = {}) {
   const list = Array.isArray(raw?.findings) ? raw.findings : (Array.isArray(raw) ? raw : []);
   const comments = [];
   for (const item of list) {
     if (!item || typeof item !== 'object') continue;
-    const path = String(item.path ?? '').trim();
+    const path = String(item.path ?? '').replace(/\\/g, '/').trim();
     if (!path) continue;
-    const resolved = allowedPaths.has(path)
-      ? path
-      : [...allowedPaths].find((candidate) => candidate.endsWith(path) || path.endsWith(candidate));
-    if (!resolved) continue;
+    const resolved = resolveAllowedPath(path, allowedPaths);
+    if (!resolved) {
+      onDrop?.('path', path);
+      continue;
+    }
+    const content = String(item.content ?? item.message ?? '').trim();
+    const startLine = Math.floor(Number(item.startLine ?? item.start_line));
+    // A finding without a usable line cannot be located or applied; keep the
+    // rest of the report but drop this one instead of emitting line 0.
+    if (!Number.isInteger(startLine) || startLine < 1) {
+      onDrop?.('line', path);
+      continue;
+    }
+    const endRaw = Math.floor(Number(item.endLine ?? item.end_line));
+    const endLine = Number.isInteger(endRaw) && endRaw >= startLine ? endRaw : startLine;
+    const severity = String(item.severity ?? '').trim().toLowerCase();
+    const category = String(item.category ?? '').trim().toLowerCase();
+    const title = String(item.title ?? '').trim();
     comments.push({
       path: resolved,
-      content: String(item.content ?? item.message ?? '').trim(),
-      start_line: Number.isFinite(Number(item.startLine ?? item.start_line)) ? Number(item.startLine ?? item.start_line) : 0,
-      end_line: Number.isFinite(Number(item.endLine ?? item.end_line)) ? Number(item.endLine ?? item.end_line) : 0,
-      severity: item.severity,
-      category: item.category,
-      title: item.title,
+      content,
+      start_line: startLine,
+      end_line: endLine,
+      severity: SEVERITIES.has(severity) ? severity : 'medium',
+      category: CATEGORIES.has(category) ? category : 'other',
+      title: title || trimText(content, 120),
       suggestion_code: item.suggestionCode ?? item.suggestion_code ?? '',
       existing_code: item.existingCode ?? item.existing_code ?? '',
       thinking: item.thinking ?? '',
@@ -255,6 +288,17 @@ export function createLlmReviewer({ getLlm, getSelection, logger } = {}) {
     let totalTokens = 0;
     let filesReviewed = 0;
     let projectSummary = '';
+    // Drop counters so a group whose findings were all unusable is not counted
+    // as reviewed output without any explanation.
+    const groupStats = { path: 0, line: 0 };
+    const noteDrop = (reason, path) => {
+      groupStats[reason] = (groupStats[reason] ?? 0) + 1;
+      if (groupStats[reason] === 1) {
+        log('warn', `delegate finding dropped (${reason}): ${path}`);
+      }
+    };
+    let failedGroups = 0;
+    const maxFailedGroups = Math.max(1, Math.floor(groups.length / 2));
 
     for (const [groupIndex, group] of groups.slice(0, MAX_GROUPS).entries()) {
       if (signal?.aborted) {
@@ -275,7 +319,7 @@ export function createLlmReviewer({ getLlm, getSelection, logger } = {}) {
         const { text, usage } = await streamText(`${SYSTEM_PROMPT}\n\n${prompt}`, signal);
         const parsed = parseFindings(text, allowedPaths);
         if (parsed) {
-          comments.push(...normalizeComments(parsed, allowedPaths));
+          comments.push(...normalizeComments(parsed, allowedPaths, { onDrop: noteDrop }));
           if (typeof parsed.projectSummary === 'string' && parsed.projectSummary.trim()) {
             projectSummary = parsed.projectSummary.trim();
           }
@@ -288,18 +332,43 @@ export function createLlmReviewer({ getLlm, getSelection, logger } = {}) {
             + Number(usage.outputTokens ?? usage.output_tokens ?? 0);
         }
       } catch (error) {
-        if (signal?.aborted || error?.code === 'code-review/cancelled') {
+        // `streamText` reports a cancelled stream as `delegate-aborted`; treating
+        // it as an ordinary failure would keep issuing requests on a dead signal.
+        if (signal?.aborted
+          || error?.code === 'code-review/cancelled'
+          || error?.code === 'code-review/delegate-aborted') {
           return { ok: false, error: { code: 'code-review/cancelled', message: '评审已取消' } };
         }
+        failedGroups += 1;
         log('warn', `delegate group ${groupIndex + 1} failed: ${errorText(error)}`);
         warnings.push({ type: 'delegate_error', file: '', message: trimText(errorText(error), 240) });
-        if (groupIndex === 0 && filesReviewed === 0) {
+        if (filesReviewed === 0) {
           return { ok: false, error: { code: error?.code ?? 'code-review/delegate-failed', message: errorText(error) } };
+        }
+        // Most of the groups failing means the surfaced result would be
+        // misleadingly "ok" with almost nothing reviewed.
+        if (failedGroups >= maxFailedGroups) {
+          return {
+            ok: false,
+            error: {
+              code: 'code-review/delegate-failed',
+              message: `DSH 模型评审多组失败（${failedGroups}/${groups.length}），已终止：${errorText(error)}`,
+            },
+            warnings,
+          };
         }
       }
       onProgress?.({
         fraction: (groupIndex + 1) / Math.max(1, groups.length),
         detail: `已完成 ${groupIndex + 1}/${groups.length} 组`,
+      });
+    }
+
+    if (groupStats.path || groupStats.line) {
+      warnings.push({
+        type: 'delegate_dropped',
+        file: '',
+        message: `已丢弃 ${groupStats.path + groupStats.line} 条无法定位的 finding（路径不匹配 ${groupStats.path} 条，行号非法 ${groupStats.line} 条）`,
       });
     }
 

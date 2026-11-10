@@ -300,7 +300,11 @@ async function mapLimit(items, limit, worker) {
       results[index] = await worker(items[index], index);
     }
   });
-  await Promise.all(runners);
+  // Wait for every worker before surfacing the first failure: a rejected
+  // Promise.all would leave the other lanes running as orphan side effects.
+  const settled = await Promise.allSettled(runners);
+  const failed = settled.find((outcome) => outcome.status === 'rejected');
+  if (failed) throw failed.reason;
   return results;
 }
 

@@ -86,6 +86,12 @@ function outputSchema() {
 
 function sleep(ms, signal) {
   return new Promise((resolvePromise) => {
+    // An already-aborted signal never fires again: wake immediately instead of
+    // blocking a cancelled wait for a full poll interval.
+    if (signal?.aborted) {
+      resolvePromise();
+      return;
+    }
     const timer = setTimeout(done, ms);
     function done() {
       clearTimeout(timer);

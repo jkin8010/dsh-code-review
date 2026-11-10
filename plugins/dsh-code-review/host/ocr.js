@@ -148,22 +148,35 @@ function emptySummary() {
   };
 }
 
-/** `ocr` reports elapsed as a Go duration string (`1m23s`); normalize to ms. */
+/**
+ * `ocr` reports elapsed as a Go duration string (`1m23s`, `500ms`); normalize
+ * to ms. Milliseconds are consumed first: a plain `/(\d+)s/` would otherwise
+ * read `500ms` as 500 seconds and then add the 500 ms on top.
+ */
+const DURATION_UNITS = [
+  [/(\d+(?:\.\d+)?)h/, 3_600_000],
+  [/(\d+(?:\.\d+)?)m(?!s)/, 60_000],
+  [/(\d+(?:\.\d+)?)s/, 1_000],
+];
+
 function parseElapsed(value, fallbackMs = 0) {
   if (typeof value === 'number' && Number.isFinite(value)) return Math.trunc(value);
   const text = String(value ?? '').trim();
   if (!text) return fallbackMs;
-  if (/^\d+$/.test(text)) return toInt(text) * 1000;
   let ms = 0;
   let matched = false;
-  const hour = text.match(/(\d+(?:\.\d+)?)h/);
-  if (hour) { ms += Number(hour[1]) * 3_600_000; matched = true; }
-  const minute = text.match(/(\d+(?:\.\d+)?)m(?!s)/);
-  if (minute) { ms += Number(minute[1]) * 60_000; matched = true; }
-  const second = text.match(/(\d+(?:\.\d+)?)s/);
-  if (second) { ms += Number(second[1]) * 1_000; matched = true; }
-  const milli = text.match(/(\d+(?:\.\d+)?)ms/);
-  if (milli) { ms += Number(milli[1]); matched = true; }
+  let rest = text.replace(/(\d+(?:\.\d+)?)ms/g, (whole, amount) => {
+    ms += Number(amount);
+    matched = true;
+    return ' ';
+  });
+  for (const [pattern, scale] of DURATION_UNITS) {
+    const unit = rest.match(pattern);
+    if (!unit) continue;
+    ms += Number(unit[1]) * scale;
+    matched = true;
+    rest = rest.replace(unit[0], ' ');
+  }
   return matched ? Math.round(ms) : fallbackMs;
 }
 
@@ -250,6 +263,12 @@ function buildChildEnv(binary, config, baseEnv = process.env) {
   return env;
 }
 
+/**
+ * Build the child environment, reading `ocr.llmTokenFile` when no inline token
+ * was configured. A failed read is reported on the returned env as
+ * `_tokenFileError` instead of being swallowed: callers surface a specific
+ * `token-file-unreadable` message rather than a generic "LLM unconfigured".
+ */
 async function prepareEnv(config, baseEnv = process.env) {
   const binary = ocrBinary(config);
   const env = buildChildEnv(binary, config, baseEnv);
@@ -260,11 +279,22 @@ async function prepareEnv(config, baseEnv = process.env) {
     try {
       const token = (await readFile(tokenFile, 'utf8')).trim();
       if (token) env.OCR_LLM_TOKEN = token;
-    } catch {
-      /* unreadable token file is reported by probeLlm/run failures instead */
+      else env._tokenFileError = `token 文件为空：${tokenFile}`;
+    } catch (error) {
+      env._tokenFileError = `无法读取 token 文件 ${tokenFile}：${errorText(error)}`;
     }
   }
   return env;
+}
+
+/** A broken `llmTokenFile` must not degrade into "LLM 未配置". */
+function tokenFileFailure(env) {
+  const detail = env?._tokenFileError;
+  if (!detail) return null;
+  return {
+    code: 'token-file-unreadable',
+    message: `${detail}。请检查 ocr.llmTokenFile 的路径与权限，或改用 ocr.llmToken。`,
+  };
 }
 
 /** Capture one short-lived ocr invocation (probe / preview / llm test). */
@@ -292,14 +322,18 @@ function execCapture(binary, args, { cwd = process.cwd(), env = process.env, tim
         });
         return;
       }
+      // `error.killed` is also true for a child killed by a signal for other
+      // reasons; only ETIMEDOUT / the timeout SIGTERM marks a timeout, otherwise
+      // classifyErrorText would report a crash as an expired budget.
+      const reason = String(error.code ?? '');
       resolvePromise({
         ok: false,
-        missing: error.code === 'ENOENT',
+        missing: reason === 'ENOENT',
         code: typeof error.code === 'number' ? error.code : null,
         stdout: out,
         stderr: err,
         error: errorText(error),
-        timedOut: Boolean(error.killed),
+        timedOut: reason === 'ETIMEDOUT' || (Boolean(error.killed) && reason !== 'ENOBUFS'),
       });
     });
   });
@@ -455,8 +489,13 @@ export async function llmTest({ config, env = process.env } = {}) {
     };
   }
   const startedAt = Date.now();
+  const llmEnv = await prepareEnv(config, env);
+  const tokenFileError = tokenFileFailure(llmEnv);
+  if (tokenFileError) {
+    return { ok: false, latencyMs: 0, message: tokenFileError.message, error: tokenFileError.code };
+  }
   const result = await execCapture(binary, ['llm', 'test', '--color', 'never'], {
-    env: await prepareEnv(config, env),
+    env: llmEnv,
     timeoutMs: LLM_TEST_TIMEOUT_MS,
   });
   const latencyMs = Date.now() - startedAt;
@@ -1110,6 +1149,10 @@ export async function runReview({
     childEnv = await prepareEnv(config, env);
   } catch (error) {
     return fail('ocr-failed', `准备 ocr 运行环境失败：${errorText(error)}`);
+  }
+  const tokenFileError = tokenFileFailure(childEnv);
+  if (tokenFileError) {
+    return fail('token-file-unreadable', tokenFileError.message);
   }
 
   const timeoutMinutes = Number(ocr.timeoutMin) > 0
