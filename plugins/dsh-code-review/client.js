@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     // 1. 常量 / 字典
     // =====================================================================
 
-    const PLUGIN_VERSION = '0.8.3';
+    const PLUGIN_VERSION = '0.8.4';
     const ENDPOINT = 'code-review';
     const PANEL_ID = 'code-review';
     const PANEL_ORDER = 24;
@@ -2973,6 +2973,9 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         });
       }, [width, height]);
       React.useEffect(() => {
+        setView({ x: 0, y: 0, w: width, h: height });
+      }, [width, height]);
+      React.useEffect(() => {
         const svg = svgRef.current;
         if (!svg) return undefined;
         const onWheel = (event) => {
@@ -3256,6 +3259,18 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       external: { label: '外部', color: 'var(--high)' },
     };
 
+    const FLOW_ROW_HEIGHT = 78;
+
+    function flowCanvasSize(nodes) {
+      const counts = { entry: 0, service: 0, data: 0, external: 0 };
+      arr(nodes).forEach((node) => {
+        const kind = str(node.kind);
+        counts[Object.hasOwn(counts, kind) ? kind : 'service'] += 1;
+      });
+      const maxRows = Math.max(1, ...Object.values(counts));
+      return { width: 1180, height: Math.max(560, 130 + maxRows * FLOW_ROW_HEIGHT) };
+    }
+
     function computeFlowLayout(nodes, width, height) {
       const columns = { entry: [], service: [], data: [], external: [] };
       arr(nodes).forEach((node) => {
@@ -3273,7 +3288,10 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       const columnTitles = [];
       columnKeys.forEach((key, columnIndex) => {
         const list = columns[key];
-        const gap = Math.min(200, (height - 80) / Math.max(1, list.length - 1));
+        // Never squeeze rows below the node height: overlapping rects would paint
+        // over neighbouring labels (a large project looked like white blocks).
+        const available = Math.max(1, list.length - 1);
+        const gap = Math.max(FLOW_ROW_HEIGHT, Math.min(200, (height - 130) / available));
         const startY = height / 2 + 12 - ((list.length - 1) * gap) / 2;
         columnTitles.push({ key, x: xs[columnIndex], y: 38, label: FLOW_KIND_META[key].label, color: FLOW_KIND_META[key].color });
         list.forEach((node, index) => {
@@ -3295,8 +3313,9 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       const graph = obj(spec.graph);
       const nodes = arr(graph.nodes);
       const edges = arr(graph.edges);
-      const width = 1180;
-      const height = 560;
+      const size = React.useMemo(() => flowCanvasSize(nodes), [nodes]);
+      const width = size.width;
+      const height = size.height;
       const [hover, setHover] = React.useState(null);
       const zoom = useGraphZoom(width, height);
       const layout = React.useMemo(() => computeFlowLayout(nodes, width, height), [nodes]);

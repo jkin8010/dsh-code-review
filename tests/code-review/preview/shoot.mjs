@@ -441,6 +441,31 @@ async function main() {
   });
   if (!zoomOk) failed = true;
 
+  // -- large flow graph: rows must not overlap ------------------------------
+  await openView('flow', { bigflow: '1' });
+  await page.waitForFunction(() => document.querySelectorAll('.cr-graph-node').length > 15, { timeout: 15000 }).catch(() => {});
+  await page.waitForTimeout(600);
+  const bigInfo = await page.evaluate(() => {
+    const svg = document.querySelector('.cr-graph-svg');
+    const viewBox = (svg?.getAttribute('viewBox') || '').split(/\s+/).map(Number);
+    const rects = [...document.querySelectorAll('.cr-graph-node rect')].map((rect) => ({
+      y: Number(rect.getAttribute('y')),
+      h: Number(rect.getAttribute('height')),
+      x: Number(rect.getAttribute('x')),
+    }));
+    const overlaps = rects.some((left, index) => rects.slice(index + 1).some((right) => (
+      left.x === right.x && left.y < right.y + right.h - 0.5 && right.y < left.y + left.h - 0.5
+    )));
+    return { height: viewBox[3] || 0, nodes: rects.length, overlaps };
+  });
+  const bigOk = bigInfo.height > 900 && bigInfo.nodes > 15 && !bigInfo.overlaps;
+  results.push({
+    view: 'flow-big',
+    ok: bigOk,
+    issues: bigOk ? [] : [`大信息流图布局异常：viewBoxHeight=${bigInfo.height} nodes=${bigInfo.nodes} overlaps=${bigInfo.overlaps}`],
+  });
+  if (!bigOk) failed = true;
+
   // -- settings (bonus capture, not part of the 7 required shots) -----------
   await openView('settings');
   await checkBasic('settings');
