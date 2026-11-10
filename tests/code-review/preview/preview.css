@@ -28,3 +28,7 @@ body {
 #root ::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* DSH shell buttons do NOT inherit text color; mirror that hostile default so the
+   harness catches components that forget to set their own color. */
+button { color: #101010; }

@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     // 1. 常量 / 字典
     // =====================================================================
 
-    const PLUGIN_VERSION = '0.2.3';
+    const PLUGIN_VERSION = '0.2.4';
     const ENDPOINT = 'code-review';
     const PANEL_ID = 'code-review';
     const PANEL_ORDER = 24;
@@ -966,7 +966,9 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
 .cr-modal-foot .cr-grow{flex:1 1 auto}
 .cr-type-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
 .cr-type-card{position:relative;text-align:left;border:1px solid var(--line);border-radius:11px;padding:10px 11px;
-  background:rgba(255,255,255,.02);cursor:pointer;transition:border-color .15s ease,background .15s ease;min-width:0}
+  background:rgba(255,255,255,.02);cursor:pointer;transition:border-color .15s ease,background .15s ease;min-width:0;
+  /* buttons do not inherit text color: without this the card title falls back to the UA button color (near-black in the DSH shell) */
+  color:var(--text);font-family:inherit}
 .cr-type-card:hover{border-color:rgba(255,255,255,.18)}
 .cr-type-card.is-active{border-color:rgba(53,224,200,.5);background:rgba(53,224,200,.08);
   box-shadow:inset 0 0 0 1px rgba(53,224,200,.12)}

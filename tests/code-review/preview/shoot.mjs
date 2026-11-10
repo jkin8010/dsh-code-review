@@ -232,6 +232,14 @@ async function main() {
   // -- launch --------------------------------------------------------------
   await openView('launch');
   await checkBasic('launch');
+  const typeCardColor = await page.$eval('.cr-type-card', (element) => getComputedStyle(element).color);
+  const typeCardLuma = (typeCardColor.match(/\d+/g) || []).slice(0, 3)
+    .map(Number).reduce((sum, value) => sum + value, 0) / 3;
+  if (!(typeCardLuma > 150)) {
+    results[results.length - 1].issues.push(`评审类型卡标题颜色过暗：${typeCardColor}（luma ${typeCardLuma.toFixed(0)}，要求 > 150）`);
+    results[results.length - 1].ok = false;
+    failed = true;
+  }
   const modal = await page.$('.cr-modal');
   const typeCards = await page.$$eval('.cr-type-card', (nodes) => nodes.length);
   if (!modal || typeCards !== 6) {
