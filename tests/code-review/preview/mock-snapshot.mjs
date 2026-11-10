@@ -722,7 +722,7 @@ export function buildMock() {
     version: 184,
     ok: true,
     config: {
-      hostVersion: '0.6.3',
+      hostVersion: '0.7.0',
       projectRoots: ['/Users/jkin/workspace/jkin8010'],
       defaultProjectId: current.id,
       defaultProjectPath: '/Users/jkin/workspace/jkin8010/mopng-api',
@@ -854,6 +854,10 @@ export function buildMock() {
         return snapshot;
       case 'job':
         return jobDetail(payload.id);
+      case 'fix.mark':
+        return { job: { ...jobs[0], fixAt: new Date().toISOString() }, fixAt: new Date().toISOString() };
+      case 'job.recheck':
+        return { job: { ...jobs[0], id: `rv-${Date.now()}`, status: 'completed', fixVerifiedAt: new Date().toISOString() } };
       case 'finding.resolve':
         return {
           job: jobs[0],

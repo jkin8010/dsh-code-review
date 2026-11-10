@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     // 1. 常量 / 字典
     // =====================================================================
 
-    const PLUGIN_VERSION = '0.6.3';
+    const PLUGIN_VERSION = '0.7.0';
     const ENDPOINT = 'code-review';
     const PANEL_ID = 'code-review';
     const PANEL_ORDER = 24;
@@ -431,7 +431,7 @@ window.__ModuleLoader__.load({
       return { snapshot, link, retryNow, fetchOnce, snapshotRef, pendingRef };
     }
 
-    function useDetailLoader(connection, detailId) {
+    function useDetailLoader(connection, detailId, reloadToken = 0) {
       const rpc = useRpc(connection);
       const [detail, setDetail] = React.useState(null);
       const [loading, setLoading] = React.useState(false);
@@ -466,7 +466,7 @@ window.__ModuleLoader__.load({
             setLoading(false);
           });
         return () => { alive = false; };
-      }, [detailId, rpc]);
+      }, [detailId, rpc, reloadToken]);
 
       return { detail, loading, error };
     }
@@ -2344,7 +2344,10 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
     function DetailView(props) {
       const spec = props || {};
       const jobId = str(spec.jobId);
-      const loaded = useDetailLoader(spec.connection, jobId);
+      const [reloadToken, setReloadToken] = React.useState(0);
+      const loaded = useDetailLoader(spec.connection, jobId, reloadToken);
+      const [verify, setVerify] = React.useState({ id: '', auto: false });
+      const autoVerifiedRef = React.useRef(new Set());
       const [sevFilter, setSevFilter] = React.useState('all');
       const [categoryFilter, setCategoryFilter] = React.useState('all');
       const [fileFilter, setFileFilter] = React.useState('all');
@@ -2385,6 +2388,58 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       React.useEffect(() => {
         setResolutions(obj(detail.resolutions));
       }, [detail.resolutions, jobId]);
+      const startVerify = React.useCallback(async (auto = false) => {
+        if (verify.id || !job.id) return;
+        try {
+          const envelope = await rpc('job.recheck', { jobId: str(job.id) });
+          const payload = unwrapEnvelope(envelope, (value) => Boolean(value && value.job && value.job.id));
+          if (!payload) throw new Error('校验任务启动失败');
+          const nextId = str(payload.job.id);
+          setVerify({ id: nextId, auto });
+          toast(auto ? '检测到修复会话，正在自动校验修复状态…' : '已开始校验修复状态…', 'info');
+        } catch (error) {
+          toast(errorText(error), 'error');
+        }
+      }, [rpc, job.id, toast, verify.id]);
+
+      // A report that a fix session was started from gets one automatic recheck
+      // when it is opened again; the recheck is the same review type/scope, and
+      // missing findings are reconciled by the Host.
+      React.useEffect(() => {
+        const id = str(job.id);
+        if (!id || str(job.type) === 'workspace' || str(job.status) !== 'completed' || !job.fixAt || job.fixVerifiedAt) return;
+        if (verify.id || autoVerifiedRef.current.has(id)) return;
+        const age = Date.now() - (Date.parse(str(job.fixAt)) || 0);
+        if (age < 30_000) return;
+        autoVerifiedRef.current.add(id);
+        void startVerify(true);
+      }, [job.id, job.status, job.fixAt, job.fixVerifiedAt, verify.id, startVerify]);
+
+      React.useEffect(() => {
+        if (!verify.id) return undefined;
+        const started = Date.now();
+        const timer = setInterval(async () => {
+          try {
+            const envelope = await rpc('job', { id: verify.id });
+            const payload = unwrapEnvelope(envelope, (value) => Boolean(value && value.job));
+            const status = payload && payload.job ? str(payload.job.status) : '';
+            if (['completed', 'failed', 'cancelled'].includes(status)) {
+              clearInterval(timer);
+              setVerify({ id: '', auto: false });
+              setReloadToken((token) => token + 1);
+              toast(status === 'completed' ? '校验完成，已更新修复状态' : `校验未完成：${status}`, status === 'completed' ? 'success' : 'warn');
+            } else if (Date.now() - started > 10 * 60_000) {
+              clearInterval(timer);
+              setVerify({ id: '', auto: false });
+              toast('校验仍在运行，可稍后重新打开报告查看', 'info');
+            }
+          } catch {
+            /* transient poll errors are retried */
+          }
+        }, 2000);
+        return () => clearInterval(timer);
+      }, [verify.id, rpc, toast]);
+
       const isFixed = (finding) => Boolean(resolutions[str(finding.key)]);
       const fixedCount = findings.filter(isFixed).length;
       const openCount = findings.length - fixedCount;
@@ -2653,6 +2708,11 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
           bodyClassName: 'cr-card-body',
           children: h('div', { style: { display: 'flex', flexDirection: 'column', gap: 7 } },
             h('button', {
+              type: 'button', className: 'cr-btn', style: { justifyContent: 'flex-start' },
+              disabled: Boolean(verify.id) || isBusy,
+              onClick: () => startVerify(false),
+            }, h(Icon, { name: verify.id ? 'clock' : 'shield', size: 12 }), verify.id ? '正在校验修复状态…' : '校验修复状态'),
+            h('button', {
               type: 'button', className: 'cr-btn is-primary', style: { justifyContent: 'flex-start' },
               disabled: fixBusy || isBusy,
               onClick: startFixSession,
@@ -2678,6 +2738,19 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
           h('span', { className: 'cr-faint', style: { fontSize: 10, fontFamily: 'var(--mono)' } }, str(job.id)),
           h('span', { style: { marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' } },
             h(StatusPill, { status }),
+            job.fixAt
+              ? h('span', {
+                className: 'cr-chip',
+                style: { color: job.fixVerifiedAt ? '#3ddc97' : '#ffd166' },
+                title: job.fixVerifiedAt ? '已校验修复状态' : '该报告创建过修复会话，打开后会自动重新校验',
+              }, verify.id ? '修复校验中…' : job.fixVerifiedAt ? '修复已校验' : '待校验修复')
+              : null,
+            h('button', {
+              type: 'button', className: 'cr-btn is-sm',
+              disabled: Boolean(verify.id) || isBusy,
+              onClick: () => startVerify(false),
+              title: '按相同类型/范围重新评审，未再出现的问题会自动标记已修复',
+            }, h(Icon, { name: verify.id ? 'clock' : 'shield', size: 11 }), verify.id ? '校验中…' : '校验修复状态'),
             h('button', {
               type: 'button', className: 'cr-btn is-sm is-primary',
               disabled: fixBusy || isBusy,
@@ -4105,6 +4178,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         try {
           const drafted = await startFixSessionDraft(context);
           if (drafted) {
+            await rpc('fix.mark', { jobId: str(id) }).catch(() => {});
             pushToast('已新建会话并填入修复提示词，按 Enter 发送（可先编辑）', 'success');
             refresh();
             return;

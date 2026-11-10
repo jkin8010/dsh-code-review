@@ -69,6 +69,14 @@ export function createRpcHandler({ config, snapshot, jobs, getServices, logger }
       }
       case 'delete':
         return { ok: await jobs.delete(payload?.id) };
+      case 'fix.mark': {
+        const result = await jobs.markFix(payload?.jobId, payload?.sessionId ?? '');
+        return { job: publicJob(result.job), fixAt: result.job.fixAt };
+      }
+      case 'job.recheck': {
+        const result = await jobs.recheck(payload?.jobId);
+        return { job: publicJob(result.job, { activity: 10 }) };
+      }
       case 'finding.resolve': {
         const result = await jobs.resolveFinding(payload?.jobId, payload?.key, payload?.resolved !== false);
         return result;
@@ -87,13 +95,19 @@ export function createRpcHandler({ config, snapshot, jobs, getServices, logger }
           error.code = 'code-review/bad-request';
           throw error;
         }
-        return createFixSessionForJob({
+        const result = await createFixSessionForJob({
           controller: services().sessionController,
           workspaceRegistry: services().workspaceRegistry,
           job,
           logger,
           stateDir: config.stateDir,
         });
+        try {
+          await jobs.markFix(job.id, result?.sessionId ?? '');
+        } catch {
+          /* marking is best effort; the session already exists */
+        }
+        return result;
       }
       case 'project.browse': {
         const requested = expandHome(String(payload?.path ?? '').trim()) || homedir();

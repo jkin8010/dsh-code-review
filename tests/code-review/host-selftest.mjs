@@ -317,6 +317,20 @@ assert.ok(markedAgain.resolutions[markTarget.key]);
 const unmarked = await rpc('finding.resolve', { jobId: changedDone.job.id, key: markTarget.key, resolved: false });
 assert.equal(unmarked.resolvedCount, 0);
 
+// Fix-session bookkeeping + recheck: marking a fix and re-running the same
+// review settles fixVerifiedAt so the client won't auto-recheck again.
+const recheckSource = await rpc('start', { type: 'module', projectPath: PLUGIN, scope: { paths: ['host'] } });
+const recheckSourceDone = await waitFor(recheckSource.job.id);
+assert.equal(recheckSourceDone.job.status, 'completed');
+const markedFix = await rpc('fix.mark', { jobId: recheckSourceDone.job.id });
+assert.equal(typeof markedFix.fixAt, 'string');
+const recheck = await rpc('job.recheck', { jobId: recheckSourceDone.job.id });
+assert.ok(recheck.job && recheck.job.id, 'recheck must start a new job');
+const recheckDone = await waitFor(recheck.job.id);
+assert.equal(recheckDone.job.status, 'completed');
+const recheckedOld = await rpc('job', { id: recheckSourceDone.job.id });
+assert.ok(recheckedOld.job.fixVerifiedAt, 'recheck must mark the old report verified');
+
 // Auto reconcile: a later review without the old finding marks the old report fixed.
 const autoRepo = join(adHocRoot, 'auto-fix');
 await mkdir(autoRepo, { recursive: true });

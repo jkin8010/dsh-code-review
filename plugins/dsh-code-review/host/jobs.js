@@ -283,10 +283,11 @@ export function createJobs({
         full.resolutions[key] = { status: 'fixed', at: nowIso(), auto: true };
         changed = true;
       }
-      if (changed) {
-        syncResolvedCount(full);
-        await store.persistNow(full);
-      }
+      // Mark the verification as done even when nothing changed, so opening the
+      // report again does not auto-run another recheck.
+      full.fixVerifiedAt = nowIso();
+      if (changed) syncResolvedCount(full);
+      await store.persistNow(full);
     }
   }
 
@@ -886,6 +887,48 @@ export function createJobs({
         }
       }
       return job;
+    },
+
+    async markFix(id, sessionId = '') {
+      const job = await api.getFull(id);
+      if (!job) {
+        const error = new Error(`评审 ${id} 不存在`);
+        error.code = 'code-review/not-found';
+        throw error;
+      }
+      job.fixAt = nowIso();
+      if (sessionId) job.fixSessionId = String(sessionId);
+      job.fixVerifiedAt = null;
+      await store.persistNow(job);
+      return { job };
+    },
+
+    async recheck(id) {
+      const job = await api.getFull(id);
+      if (!job) {
+        const error = new Error(`评审 ${id} 不存在`);
+        error.code = 'code-review/not-found';
+        throw error;
+      }
+      if (job.type === 'workspace') {
+        const error = new Error('当前改动评审没有稳定的校验基线；请新建一次当前改动评审来确认修复');
+        error.code = 'code-review/bad-request';
+        throw error;
+      }
+      const recheck = api.start({
+        projectId: job.projectId,
+        projectPath: job.projectPath,
+        type: job.type,
+        scope: job.scope ?? {},
+        options: {
+          ...(job.options ?? {}),
+          background: [job.options?.background, '复评：校验修复状态'].filter(Boolean).join('\n'),
+        },
+      });
+      job.recheckJobId = recheck.id;
+      job.lastRecheckAt = nowIso();
+      await store.persistNow(job);
+      return { job: recheck };
     },
 
     async resolveFinding(id, key, resolved = true) {

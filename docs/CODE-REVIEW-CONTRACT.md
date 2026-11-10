@@ -380,6 +380,8 @@ export function createSnapshot({ config, store, jobs, git, ocr, logger }) -> { b
 | `retry` | `{ id }` | `{ job }` |
 | `delete` | `{ id }` | `{ ok }` |
 | `project` | `{ projectId?, projectPath?, refresh? }` | `{ project: ProjectView }` |
+| `fix.mark` | `{ jobId, sessionId? }` | `{ job, fixAt }`；记录该报告创建过修复会话，用于后续自动校验 |
+| `job.recheck` | `{ jobId }` | `{ job }`；按相同 type/scope 复评，未再出现的旧 finding 自动标记已修复 |
 | `finding.resolve` | `{ jobId, key, resolved? }` | `{ job, resolutions, resolvedCount }`; persists the "fixed/undone" mark (the key comes from `findings[].key` returned by `job`) |
 | `fix.create` | `{ jobId }` | `{ sessionId, jobId, prompted, findings, title?, projectName?, error? }`; creates a new session in the project directory and sends the fix prompt |
 | `project.browse` | `{ path? }` | `{ path, parent, roots:[{name,path}], entries:[{name,path,hidden}] }`; built-in directory browser, works in any environment |

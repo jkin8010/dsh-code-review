@@ -379,6 +379,8 @@ export function createSnapshot({ config, store, jobs, git, ocr, logger }) -> { b
 | `retry` | `{ id }` | `{ job }` |
 | `delete` | `{ id }` | `{ ok }` |
 | `project` | `{ projectId?, projectPath?, refresh? }` | `{ project: ProjectView }` |
+| `fix.mark` | `{ jobId, sessionId? }` | `{ job, fixAt }`；记录该报告创建过修复会话，用于后续自动校验 |
+| `job.recheck` | `{ jobId }` | `{ job }`；按相同 type/scope 复评，未再出现的旧 finding 自动标记已修复 |
 | `finding.resolve` | `{ jobId, key, resolved? }` | `{ job, resolutions, resolvedCount }`；持久化“已修复/撤销”标记（key 由 `job` 返回的 findings[].key 提供） |
 | `fix.create` | `{ jobId }` | `{ sessionId, jobId, prompted, findings, title?, projectName?, error? }`；在项目目录新建会话并发送修复提示词 |
 | `project.browse` | `{ path? }` | `{ path, parent, roots:[{name,path}], entries:[{name,path,hidden}] }`；内置目录浏览器，任意环境可用 |

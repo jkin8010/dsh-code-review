@@ -161,6 +161,7 @@ Besides having the Agent call the tool, you can also use slash commands right in
 5. **The project list automatically includes**: Git repositories under `projectRoots` (default `/Users/jkin/workspace`, 2 levels deep),
    DSH workspaces, and projects that have already been reviewed (even if they are not under `projectRoots`).
 6. **Fixed markers**: the review details page can mark/unmark "fixed" and filter by fix status; old findings that a new review no longer reports are marked fixed automatically.
+7. **Automatic fix verification**: once a fix session was started from a report, opening the report again re-runs the same review type/scope automatically; findings that no longer appear are marked fixed (a manual "Verify fixes" button is also available).
 7. **Any project**: the last entry of the project dropdown ("＋ Add project path…"), the "Add project" action on the project page, and **the project dropdown in New Review** can all add one;
    both the **built-in folder browser** and **manually typing an absolute path** are supported (the browser lists directories directly and can go up a level, with no system dialog),
    and additions are persisted in `<stateDir>/projects.json`.

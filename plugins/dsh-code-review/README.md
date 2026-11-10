@@ -85,6 +85,7 @@ Available directly in a project conversation (mirroring the ocr CLI review types
 - The header and the list show `Fixed X / Unfixed Y`, finding cards carry a green "Fixed" badge, and the Markdown export includes the fix status
 - Markers are persisted in the job file (`resolutions`) and survive refreshes and restarts
 - When a new review with the same project, review type and scope no longer reports an old finding, the old report is marked as fixed **automatically**
+- After a fix session was started from a report, reopening it automatically re-runs the same scope to verify fixes (or use the "Verify fixes" button)
 
 ## One-click fix session
 

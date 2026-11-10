@@ -2,7 +2,7 @@
 
 简体中文 | [English](CODE-REVIEW-DELIVERY.md)
 
-> 插件包：`plugins/dsh-code-review`（`@jkin8010/dsh-code-review` v0.6.3）
+> 插件包：`plugins/dsh-code-review`（`@jkin8010/dsh-code-review` v0.7.0）
 > 依赖：`ocr`（`@alibaba-group/open-code-review`）v1.13.6、`git`、Node 22+
 > 本机已安装到 desktop profile；**重启 DSH 后生效**（见文末）。
 

@@ -146,6 +146,7 @@ const PUBLIC_JOB_FIELDS = [
   'title', 'subtitle', 'scope', 'engine', 'engineDetail', 'options', 'status',
   'stage', 'progress', 'createdAt', 'startedAt', 'finishedAt', 'durationMs',
   'counts', 'stages', 'error', 'plan', 'summary', 'artifacts', 'message', 'resolvedCount',
+  'fixAt', 'fixSessionId', 'fixVerifiedAt', 'recheckJobId', 'lastRecheckAt',
 ];
 
 export function publicJob(job, { activity = 0 } = {}) {
