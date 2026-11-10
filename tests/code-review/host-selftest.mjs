@@ -32,14 +32,6 @@ const scope = {
     if (service === 'connection') {
       return { fetch: { register: (config) => { route = config; return () => { route = null; }; } } };
     }
-    if (service === 'directoryPicker') {
-      return {
-        capability: () => ({
-          kind: 'native',
-          pick: async () => '/tmp/picked-from-stub',
-        }),
-      };
-    }
     return undefined;
   },
   effect: (factory) => {
@@ -222,8 +214,16 @@ assert.ok(refreshed.projects.some((project) => project.path === reviewedRepo),
   'a reviewed ad-hoc project must stay in the project list after refresh');
 assert.ok(refreshed.stats.byProject.some((item) => item.projectId === projectId(reviewedRepo)));
 
-const picked = await rpc('project.pick', {});
-assert.equal(picked.path, '/tmp/picked-from-stub', 'project.pick must return the picker path');
+const browseRoot = join(adHocRoot, 'browse-root');
+await mkdir(join(browseRoot, 'sub-a'), { recursive: true });
+await mkdir(join(browseRoot, 'sub-b'), { recursive: true });
+await writeFile(join(browseRoot, 'file.txt'), 'not a directory');
+const listing = await rpc('project.browse', { path: browseRoot });
+assert.equal(listing.path, browseRoot);
+assert.ok(listing.parent, 'browse must expose a parent');
+assert.deepEqual(listing.entries.map((entry) => entry.name), ['sub-a', 'sub-b']);
+assert.ok(listing.entries.every((entry) => entry.path.startsWith(browseRoot)));
+assert.ok(Array.isArray(listing.roots));
 
 const removed = await rpc('project.remove', { path: addedRepo });
 assert.equal(removed.ok, true);

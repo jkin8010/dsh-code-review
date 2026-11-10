@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     // 1. 常量 / 字典
     // =====================================================================
 
-    const PLUGIN_VERSION = '0.3.1';
+    const PLUGIN_VERSION = '0.3.2';
     const ENDPOINT = 'code-review';
     const PANEL_ID = 'code-review';
     const PANEL_ORDER = 24;
@@ -1410,11 +1410,91 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         }, option.label)));
     }
 
+    function FolderBrowserDialog(props) {
+      const spec = props || {};
+      const rpc = useRpc(spec.connection);
+      const [state, setState] = React.useState({
+        loading: false, error: '', path: '', parent: null, entries: [], roots: [], at: 0,
+      });
+      const load = React.useCallback(async (nextPath) => {
+        setState((current) => ({ ...current, loading: true, error: '' }));
+        try {
+          const envelope = await rpc('project.browse', nextPath ? { path: nextPath } : {});
+          const payload = unwrapEnvelope(envelope, (value) => Boolean(value && Array.isArray(value.entries)));
+          if (!payload) throw new Error('目录列表返回异常');
+          setState({
+            loading: false,
+            error: '',
+            path: str(payload.path),
+            parent: payload.parent ? str(payload.parent) : null,
+            entries: arr(payload.entries),
+            roots: arr(payload.roots),
+            at: Date.now(),
+          });
+        } catch (cause) {
+          setState((current) => ({ ...current, loading: false, error: errorText(cause) }));
+        }
+      }, [rpc]);
+      React.useEffect(() => {
+        if (spec.open) void load(spec.startPath || '');
+      }, [spec.open, spec.startPath]);
+      if (!spec.open) return null;
+      return h(Modal, {
+        open: true,
+        onClose: spec.onClose,
+        title: '选择项目文件夹',
+        subtitle: '浏览目录，进入目标文件夹后点「选择此文件夹」；也可以返回手动输入路径',
+        footer: [
+          h('span', { key: 'path', className: 'cr-grow cr-hint' }, state.path || ''),
+          h('button', { key: 'cancel', type: 'button', className: 'cr-btn is-ghost', onClick: spec.onClose }, '取消'),
+          h('button', {
+            key: 'pick', type: 'button', className: 'cr-btn is-primary',
+            disabled: state.loading || !state.path,
+            onClick: () => spec.onPick && spec.onPick(state.path),
+          }, h(Icon, { name: 'check', size: 12 }), '选择此文件夹'),
+        ],
+        children: [
+          arr(state.roots).length ? h('div', { key: 'roots', style: { display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 } },
+            arr(state.roots).map((root) => h('button', {
+              key: root.path, type: 'button', className: 'cr-btn is-sm',
+              onClick: () => void load(root.path),
+            }, h(Icon, { name: 'folder', size: 11 }), str(root.name)))) : null,
+          h('div', { key: 'nav', style: { display: 'flex', gap: 6, marginBottom: 10 } },
+            h('button', {
+              type: 'button', className: 'cr-btn is-sm', disabled: !state.parent || state.loading,
+              onClick: () => state.parent && void load(state.parent),
+            }, h(Icon, { name: 'arrowLeft', size: 11 }), '上一级'),
+            h('input', { className: 'cr-input', value: state.path, readOnly: true, style: { flex: '1 1 auto', minWidth: 0 } })),
+          state.error ? h('div', { key: 'error', className: 'cr-hint', style: { color: '#ff9aa4', marginBottom: 8 } }, state.error) : null,
+          h('div', {
+            key: 'list',
+            style: { maxHeight: 268, overflow: 'auto', border: '1px solid var(--line)', borderRadius: 10, background: 'rgba(255,255,255,.015)' },
+          },
+          state.loading
+            ? h('div', { className: 'cr-hint', style: { padding: 12 } }, '加载中…')
+            : (arr(state.entries).length
+              ? arr(state.entries).map((entry) => h('button', {
+                key: str(entry.path),
+                type: 'button',
+                'data-dir-entry': str(entry.name),
+                style: {
+                  display: 'flex', width: '100%', alignItems: 'center', gap: 8, padding: '7px 10px',
+                  border: 0, borderBottom: '1px solid rgba(255,255,255,.05)', background: 'transparent',
+                  color: entry.hidden ? '#9db0c9' : 'var(--text)', cursor: 'pointer', fontSize: 12, textAlign: 'left',
+                },
+                onClick: () => void load(entry.path),
+              }, h(Icon, { name: 'folder', size: 12 }), h('span', { className: 'cr-ellipsis' }, str(entry.name))))
+              : h('div', { className: 'cr-hint', style: { padding: 12 } }, '没有子目录，可直接选择当前文件夹'))),
+        ],
+      });
+    }
+
     function AddProjectDialog(props) {
       const spec = props || {};
       const [path, setPath] = React.useState('');
       const [busy, setBusy] = React.useState(false);
       const [picking, setPicking] = React.useState(false);
+      const [browseOpen, setBrowseOpen] = React.useState(false);
       const [error, setError] = React.useState('');
       React.useEffect(() => {
         if (spec.open) {
@@ -1422,6 +1502,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
           setError('');
           setBusy(false);
           setPicking(false);
+          setBrowseOpen(false);
         }
       }, [spec.open]);
       if (!spec.open) return null;
@@ -1440,20 +1521,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
           setBusy(false);
         }
       };
-      const pickFolder = async () => {
-        if (!spec.onPick || picking || busy) return;
-        setPicking(true);
-        setError('');
-        try {
-          const value = await spec.onPick();
-          if (value) setPath(value);
-        } catch (cause) {
-          setError(errorText(cause));
-        } finally {
-          setPicking(false);
-        }
-      };
-      return h(Modal, {
+      return h(React.Fragment, null, h(Modal, {
         open: spec.open,
         onClose: busy ? null : spec.onClose,
         title: '添加项目',
@@ -1478,13 +1546,23 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
                 onKeyDown: (event) => { if (event.key === 'Enter') submit(); },
                 disabled: busy || picking,
               }),
-              spec.onPick ? h('button', {
+              h('button', {
                 type: 'button', className: 'cr-btn is-sm', style: { flex: '0 0 auto', height: 32 },
-                onClick: pickFolder, disabled: busy || picking, title: '打开系统文件夹对话框',
-              }, h(Icon, { name: picking ? 'clock' : 'folder', size: 12 }), picking ? '选择中…' : '选择文件夹…') : null)),
+                onClick: () => setBrowseOpen(true), disabled: busy,
+                title: '浏览文件夹并选择',
+              }, h(Icon, { name: 'folder', size: 12 }), '浏览文件夹…'))),
           error ? h('div', { key: 'error', className: 'cr-hint', style: { color: '#ff9aa4', marginTop: 8 } }, error) : null,
         ],
-      });
+      }), h(FolderBrowserDialog, {
+        open: browseOpen,
+        startPath: path,
+        connection: spec.connection,
+        onClose: () => setBrowseOpen(false),
+        onPick: (value) => {
+          setPath(value);
+          setBrowseOpen(false);
+        },
+      }));
     }
 
     function ToastStack(props) {
@@ -3692,12 +3770,6 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         return next;
       }, [rpc, pushToast, refresh]);
 
-      const pickProjectPath = React.useCallback(async () => {
-        const envelope = await rpc('project.pick', {});
-        const payload = unwrapEnvelope(envelope, (value) => Boolean(value && typeof value.path !== 'undefined'));
-        return payload && payload.path ? str(payload.path) : '';
-      }, [rpc]);
-
       const openJob = React.useCallback((id) => {
         const jobId = str(id);
         if (!jobId) return;
@@ -3828,7 +3900,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             open: addProjectOpen,
             onClose: () => setAddProjectOpen(false),
             onSubmit: addProject,
-            onPick: pickProjectPath,
+            connection,
           }),
           settingsOpen ? h(SettingsDrawer, {
             snapshot,

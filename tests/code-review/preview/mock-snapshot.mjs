@@ -896,8 +896,22 @@ export function buildMock() {
         return { ok: true, latencyMs: 412, message: 'LLM connected: deepseek/deepseek-chat', error: null };
       case 'project':
         return { project: projects.find((item) => item.id === payload.projectId) ?? current };
-      case 'project.pick':
-        return { path: '/Users/jkin/workspace/qise-tech/synapse-router' };
+      case 'project.browse': {
+        const dir = String(payload?.path ?? '/Users/jkin/workspace');
+        return {
+          path: dir,
+          parent: '/Users/jkin',
+          roots: [
+            { name: '工作区', path: '/Users/jkin/workspace' },
+            { name: '主目录', path: '/Users/jkin' },
+          ],
+          entries: [
+            { name: 'jkin8010', path: '/Users/jkin/workspace/jkin8010', hidden: false },
+            { name: 'qise-tech', path: '/Users/jkin/workspace/qise-tech', hidden: false },
+            { name: 'synapse-router', path: '/Users/jkin/workspace/synapse-router', hidden: false },
+          ],
+        };
+      }
       case 'project.add': {
         const path = String(payload.path ?? '').trim();
         const project = {

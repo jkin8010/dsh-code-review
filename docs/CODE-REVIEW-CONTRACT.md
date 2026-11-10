@@ -377,7 +377,7 @@ export function createSnapshot({ config, store, jobs, git, ocr, logger }) -> { b
 | `retry` | `{ id }` | `{ job }` |
 | `delete` | `{ id }` | `{ ok }` |
 | `project` | `{ projectId?, projectPath?, refresh? }` | `{ project: ProjectView }` |
-| `project.pick` | `{}` | `{ path: string \| null }`；调用 DSH 系统目录选择器（native picker），取消为 null |
+| `project.browse` | `{ path? }` | `{ path, parent, roots:[{name,path}], entries:[{name,path,hidden}] }`；内置目录浏览器，任意环境可用 |
 | `project.add` | `{ path }`（绝对路径，Git 或普通目录） | `{ project, snapshot }`，持久化 + 设为当前 |
 | `project.remove` | `{ path }` | `{ ok, snapshot }`（已评审项目保留，仅移出「已添加」） |
 | `graph` | `{ projectId?, projectPath?, kind:'architecture'\|'flow' }` | `{ graph, summary, findings }` |

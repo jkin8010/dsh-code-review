@@ -275,35 +275,41 @@ async function main() {
   results[results.length - 1].miniCells = miniCells;
   await shoot('projects');
 
-  // -- add project dialog (folder picker + manual input) --------------------
+  // -- add project dialog (folder browser + manual input) --------------------
   await page.evaluate(() => {
     const button = [...document.querySelectorAll('button')]
       .find((node) => node.textContent.includes('添加项目') && node.closest('.cr-card'));
     if (button) button.click();
   });
   await page.waitForSelector('.cr-modal input.cr-input', { timeout: 8000 });
-  const hasPickerButton = await page.evaluate(() => [...document.querySelectorAll('.cr-modal button')]
-    .some((node) => node.textContent.includes('选择文件夹')));
-  if (!hasPickerButton) {
-    results.push({ view: 'add-project', ok: false, issues: ['添加项目弹层缺少“选择文件夹”按钮'] });
+  const hasBrowserButton = await page.evaluate(() => [...document.querySelectorAll('.cr-modal button')]
+    .some((node) => node.textContent.includes('浏览文件夹')));
+  if (!hasBrowserButton) {
+    results.push({ view: 'add-project', ok: false, issues: ['添加项目弹层缺少“浏览文件夹”按钮'] });
     failed = true;
   } else {
     await page.evaluate(() => {
       const button = [...document.querySelectorAll('.cr-modal button')]
-        .find((node) => node.textContent.includes('选择文件夹'));
+        .find((node) => node.textContent.includes('浏览文件夹'));
       if (button) button.click();
     });
     try {
+      await page.waitForSelector('[data-dir-entry]', { timeout: 8000 });
+      await page.screenshot({ path: join(SHOTS, 'code-review-add-project.png'), fullPage: false, animations: 'disabled' });
+      await page.evaluate(() => {
+        const button = [...document.querySelectorAll('.cr-modal button')]
+          .find((node) => node.textContent.includes('选择此文件夹'));
+        if (button) button.click();
+      });
       await page.waitForFunction(() => {
-        const input = document.querySelector('.cr-modal input.cr-input');
-        return Boolean(input && input.value && input.value.includes('synapse-router'));
+        const inputs = [...document.querySelectorAll('.cr-modal input.cr-input')];
+        return inputs.some((input) => input.value && input.value.includes('/Users/jkin/workspace'));
       }, { timeout: 8000 });
       results.push({ view: 'add-project', ok: true, issues: [] });
     } catch (error) {
-      results.push({ view: 'add-project', ok: false, issues: [`文件夹选择未回填路径：${error.message}`] });
+      results.push({ view: 'add-project', ok: false, issues: [`文件夹浏览器未回填路径：${error.message}`] });
       failed = true;
     }
-    await page.screenshot({ path: join(SHOTS, 'code-review-add-project.png'), fullPage: false, animations: 'disabled' });
   }
 
   // -- architecture --------------------------------------------------------

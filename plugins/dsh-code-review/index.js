@@ -16,7 +16,10 @@
  * `ocr`, an unconfigured LLM, or a non-git project leaves the page readable and
  * explains the next action in `health` / `overview`.
  */
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir, stat } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { dirname, join } from 'node:path';
 import * as git from './host/git.js';
 import * as ocr from './host/ocr.js';
 import * as analyze from './host/analyze.js';
@@ -263,21 +266,50 @@ export function apply(ctx, rawConfig) {
         return { ok: await jobsApi.delete(payload?.id) };
       case 'project':
         return { project: await snapshot.getProject(payload ?? {}) };
-      case 'project.pick': {
-        const picker = ctx.get?.('directoryPicker');
-        if (!picker || typeof picker.capability !== 'function') {
-          const error = new Error('当前环境没有可用的系统目录选择器，请手动输入路径');
-          error.code = 'code-review/picker-unavailable';
+      case 'project.browse': {
+        const requested = expandHome(String(payload?.path ?? '').trim()) || homedir();
+        let info = null;
+        try {
+          info = await stat(requested);
+        } catch {
+          const error = new Error(`目录不存在：${requested}`);
+          error.code = 'code-review/not-found';
           throw error;
         }
-        const capability = picker.capability();
-        if (capability?.kind !== 'native' || typeof capability.pick !== 'function') {
-          const error = new Error('当前目录选择器不支持系统对话框，请手动输入路径');
-          error.code = 'code-review/picker-unsupported';
+        const target = info.isDirectory() ? requested : dirname(requested);
+        let entries = [];
+        try {
+          entries = await readdir(target, { withFileTypes: true });
+        } catch (cause) {
+          const error = new Error(`目录不可读：${target}（${errorText(cause)}）`);
+          error.code = 'code-review/bad-request';
           throw error;
         }
-        const selected = await capability.pick(new AbortController().signal);
-        return { path: typeof selected === 'string' && selected ? selected : null };
+        const dirs = entries
+          .filter((entry) => entry.isDirectory())
+          .map((entry) => ({
+            name: entry.name,
+            path: join(target, entry.name),
+            hidden: entry.name.startsWith('.'),
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
+          .slice(0, 500);
+        const parent = dirname(target);
+        const roots = [];
+        const candidates = [
+          ...(config.projectRoots ?? []).map((root) => expandHome(root)),
+          homedir(),
+        ];
+        for (const path of candidates) {
+          if (!path || !existsSync(path) || roots.some((root) => root.path === path)) continue;
+          roots.push({ name: path === homedir() ? '主目录' : path.split('/').filter(Boolean).pop(), path });
+        }
+        return {
+          path: target,
+          parent: parent === target ? null : parent,
+          roots: roots.slice(0, 6),
+          entries: dirs,
+        };
       }
       case 'project.add': {
         const project = await snapshot.addProjectPath(payload?.path);
