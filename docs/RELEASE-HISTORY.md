@@ -15,7 +15,7 @@
 
 ## Archived releases
 
-### v0.1.1 — v0.1.1 — 支持从 Git URL 直接安装
+### v0.1.1 — 支持从 Git URL 直接安装
 
 _Released 2026-11-10_
 
@@ -32,7 +32,7 @@ _Released 2026-11-10_
 
 安装后若返回 `restart-required`，重启 DSH 即可看到左侧栏「代码评审中心」。
 
-### v0.1.2 — v0.1.2 — 包名迁移到 @jkin8010/dsh-code-review
+### v0.1.2 — 包名迁移到 @jkin8010/dsh-code-review
 
 _Released 2026-11-10_
 
@@ -48,7 +48,7 @@ _Released 2026-11-10_
   `plugin_manager → install_bundle → https://github.com/jkin8010/dsh-code-review`
 - 已安装旧 `@qise/dsh-code-review` 的 profile：先移除旧包，再按上面安装；或手工把依赖/bundles/patch 行改为 `@jkin8010/dsh-code-review` 后重启 DSH。
 
-### v0.2.1 — v0.2.1 — 提升暗色界面文字对比度
+### v0.2.1 — 提升暗色界面文字对比度
 
 _Released 2026-11-10_
 
@@ -64,7 +64,7 @@ _Released 2026-11-10_
 
 升级：`install_bundle target: https://github.com/jkin8010/dsh-code-review`，然后刷新页面（客户端插件）即可看到新配色。
 
-### v0.2.2 — v0.2.2 — 二次提升可读性 + 截图改用真实项目名
+### v0.2.2 — 二次提升可读性 + 截图改用真实项目名
 
 _Released 2026-11-10_
 
@@ -82,7 +82,7 @@ mopng-api、mopng-desktop、fastrtc-talking-more、image-matting、photocraft、
 
 升级：`install_bundle target: https://github.com/jkin8010/dsh-code-review`，然后**硬刷新页面**（Cmd+Shift+R）或重启 DSH；若设置页仍显示旧版本，说明页面加载的是缓存客户端。
 
-### v0.2.3 — v0.2.3 — 项目配置自愈 + 文字近白高对比
+### v0.2.3 — 项目配置自愈 + 文字近白高对比
 
 _Released 2026-11-10_
 
@@ -105,7 +105,7 @@ mopng-api、mopng-desktop、fastrtc-talking-more、image-matting、usee-art-canv
 
 升级：`install_bundle target: https://github.com/jkin8010/dsh-code-review`，然后**重启 DSH**（配置/宿主需重新加载），页面加载后设置页应显示插件版本 v0.2.3。
 
-### v0.2.4 — v0.2.4 — 修复评审类型卡片标题不可见
+### v0.2.4 — 修复评审类型卡片标题不可见
 
 _Released 2026-11-10_
 
@@ -123,7 +123,7 @@ DSH shell 的 `<button>` **不继承文字颜色**，而「评审类型」卡片
 
 升级：`install_bundle target: https://github.com/jkin8010/dsh-code-review`，然后重启 DSH；HUD 与设置页应显示 v0.2.4。
 
-### v0.3.1 — v0.3.1 — 添加项目支持文件夹选择 + 新建评审内添加
+### v0.3.1 — 添加项目支持文件夹选择 + 新建评审内添加
 
 _Released 2026-11-10_
 
@@ -147,7 +147,7 @@ _Released 2026-11-10_
 
 升级：`install_bundle target: https://github.com/jkin8010/dsh-code-review`，然后重启 DSH。
 
-### v0.3.2 — v0.3.2 — 内置文件夹浏览器（修复选择文件夹报错）
+### v0.3.2 — 内置文件夹浏览器（修复选择文件夹报错）
 
 _Released 2026-11-10_
 
@@ -176,7 +176,7 @@ _Released 2026-11-10_
 
 升级：`install_bundle target: https://github.com/jkin8010/dsh-code-review`，然后重启 DSH。
 
-### v0.3.3 — v0.3.3 — 修复错误回包掩盖真实原因
+### v0.3.3 — 修复错误回包掩盖真实原因
 
 _Released 2026-11-10_
 
@@ -208,7 +208,7 @@ Host 侧方法（project.browse）只在重启后加载；仅刷新页面只会�
 
 升级：`install_bundle target: https://github.com/jkin8010/dsh-code-review`。
 
-### v0.5.1 — v0.5.1 — 修复会话旧 Host 自动兜底
+### v0.5.1 — 修复会话旧 Host 自动兜底
 
 _Released 2026-11-10_
 
@@ -237,7 +237,7 @@ _Released 2026-11-10_
 
 升级：`install_bundle target: https://github.com/jkin8010/dsh-code-review`，然后刷新页面。
 
-### v0.5.2 — v0.5.2 — 版本可见 + 修复会话兜底加强
+### v0.5.2 — 版本可见 + 修复会话兜底加强
 
 _Released 2026-11-10_
 
