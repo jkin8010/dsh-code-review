@@ -172,6 +172,17 @@ export function apply(ctx, rawConfig) {
     return;
   }
   config.ocr.bin = findOcrBinary(config);
+  config.hostVersion = HOST_VERSION;
+  // Core Host services are captured through inject; this works regardless of
+  // whether ctx.get resolves them and is required by fix.create / --fix.
+  if (typeof ctx.inject === 'function') {
+    ctx.inject(['sessionController'], (scope) => {
+      activeSessionController = scope.sessionController ?? scope.get?.('sessionController') ?? null;
+    });
+    ctx.inject(['workspaceRegistry'], (scope) => {
+      activeWorkspaceRegistry = scope.workspaceRegistry ?? scope.get?.('workspaceRegistry') ?? null;
+    });
+  }
 
   let jobsApi = null;
   const jobsAccessor = {
