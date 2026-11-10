@@ -67,7 +67,8 @@ Agent 会启动真实评审（默认等待完成）并把问题摘要与 finding
 并把本次 findings 整理成修复提示词（优先 critical/high、含文件与行号、建议代码）自动发送；
 客户端支持 `uiWorkspace.openSession` 时直接跳到新会话，否则在左侧会话列表打开。
 
-> 需要 DSH 提供 `sessionController`；不可用时按钮会提示环境不支持。
+> 需要 DSH 提供 `sessionController`；Host 较旧（未重启）时客户端会用 DSH Client Remote 的
+> `session.create` / `session.prompt` 兜底创建，并提示重启 DSH 启用完整模式。
 
 ## 看什么
 

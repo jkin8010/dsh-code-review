@@ -118,11 +118,20 @@ const connection = {
 // -- mock ctx + module loader ------------------------------------------------
 
 const cleanups = [];
+// Stands in for the DSH Client Remote namespace used by the old-Host fallback.
+const mockRemote = {
+  session: {
+    create: async () => ({ ok: true, value: { sessionId: 'session-fallback-fix' } }),
+    prompt: async () => ({ ok: true, value: { accepted: true } }),
+  },
+};
 const ctx = {
   connection,
+  remote: mockRemote,
   get(name) {
     if (name === 'locale') return locale;
     if (name === 'connection') return connection;
+    if (name === 'remote') return mockRemote;
     return undefined;
   },
   effect(fn, _label) {

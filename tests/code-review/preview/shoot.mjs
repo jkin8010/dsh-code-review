@@ -231,6 +231,18 @@ async function main() {
   if (detailIssues.length) failed = true;
   await shoot('detail');
 
+  // -- fix session fallback (old Host) --------------------------------------
+  const fixClicked = await page.evaluate(() => {
+    const button = [...document.querySelectorAll('button')].find((node) => node.textContent.includes('新建修复 Session'));
+    if (button) button.click();
+    return Boolean(button);
+  });
+  await page.waitForTimeout(1000);
+  const fixToast = fixClicked ? await page.$$eval('.cr-toasts', (nodes) => nodes.map((node) => node.textContent).join(' ')) : '';
+  const fixOk = fixClicked && /已创建修复会话/.test(fixToast) && /session-fallback-fix|修复会话/.test(fixToast);
+  results.push({ view: 'fix-fallback', ok: fixOk, issues: fixOk ? [] : [`修复会话 fallback 未生效：clicked=${fixClicked} toast=${fixToast}`] });
+  if (!fixOk) failed = true;
+
   // -- launch --------------------------------------------------------------
   await openView('launch');
   await checkBasic('launch');

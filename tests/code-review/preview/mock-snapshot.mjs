@@ -896,8 +896,10 @@ export function buildMock() {
         return { ok: true, latencyMs: 412, message: 'LLM connected: deepseek/deepseek-chat', error: null };
       case 'project':
         return { project: projects.find((item) => item.id === payload.projectId) ?? current };
+      // Simulates a Host plugin older than the UI: the client must fall back to
+      // the DSH Client Remote session endpoints.
       case 'fix.create':
-        return { sessionId: 'session-demo-fix', jobId: payload?.jobId ?? '', prompted: true, findings: 7, title: '修复会话演示' };
+        return { ok: false, error: { code: 'gateway/bad-request', message: '未知方法：fix.create', details: {} } };
       case 'project.browse': {
         const dir = String(payload?.path ?? '/Users/jkin/workspace');
         return {

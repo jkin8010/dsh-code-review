@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     // 1. 常量 / 字典
     // =====================================================================
 
-    const PLUGIN_VERSION = '0.5.0';
+    const PLUGIN_VERSION = '0.5.1';
     const ENDPOINT = 'code-review';
     const PANEL_ID = 'code-review';
     const PANEL_ORDER = 24;
@@ -2257,6 +2257,32 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       return lines.join('\n');
     }
 
+    /** Prompt for the client-side fallback when the Host plugin is older than the UI. */
+    function buildFixPromptText(job, findings) {
+      const meta = obj(job);
+      const sorted = sortFindings(findings);
+      const lines = [
+        `你是代码修复助手。项目「${str(meta.projectName, '')}」刚完成一次${str(obj(TYPE_META[str(meta.type)]).label, str(meta.type))}评审。`,
+        `报告：${str(meta.title, '代码评审')}`,
+        '请根据下面的 findings 修复代码。要求：',
+        '1. 先阅读相关文件与调用方，确认问题真实存在；不确定的不要改。',
+        '2. 优先处理 critical / high，其次 medium；low 可按性价比处理。',
+        '3. 保持最小改动与现有代码风格，不引入无关重构。',
+        '4. 修改后运行相关测试/构建；最后用中文汇总：改了什么、为什么、还剩什么没解决。',
+        '',
+        `共 ${sorted.length} 条问题：`,
+      ];
+      sorted.slice(0, 24).forEach((finding) => {
+        const location = num(finding.startLine) ? `${str(finding.path)}:${num(finding.startLine)}` : str(finding.path);
+        lines.push(`- [${str(finding.severity)}/${str(finding.category)}] ${location} — ${str(finding.title)}`);
+        if (str(finding.content)) lines.push(`  ${str(finding.content).replace(/\s+/g, ' ').slice(0, 500)}`);
+        if (str(finding.suggestionCode)) lines.push(`  建议代码：${str(finding.suggestionCode).replace(/\s+/g, ' ').slice(0, 400)}`);
+      });
+      if (sorted.length > 24) lines.push(`（另有 ${sorted.length - 24} 条，见代码评审中心详情页）`);
+      lines.push('', '如果某条 finding 判断为误报，请说明理由并跳过，不要为了“修复”而改坏代码。');
+      return lines.join('\n');
+    }
+
     function FindingCard(props) {
       const spec = props || {};
       const finding = obj(spec.finding);
@@ -2308,7 +2334,11 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         if (fixBusy || !spec.onCreateFix) return;
         setFixBusy(true);
         try {
-          await spec.onCreateFix(job.id);
+          await spec.onCreateFix(job.id, {
+            projectPath: str(job.projectPath),
+            job,
+            findings,
+          });
         } catch (error) {
           toast(errorText(error), 'error');
         } finally {
@@ -3655,6 +3685,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
 
     let connection = null;
     let clientCtx = null;
+    let clientRemote = null;
 
     /** Ask the DSH client to focus a session; returns false when the service is absent. */
     function openDshSession(sessionId) {
@@ -3675,6 +3706,63 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         /* navigation is best effort */
       }
       return false;
+    }
+
+    function getClientRemote() {
+      try {
+        if (clientRemote && clientRemote.session) return clientRemote;
+        if (clientCtx && typeof clientCtx.get === 'function') {
+          const remote = clientCtx.get('remote');
+          if (remote && remote.session) {
+            clientRemote = remote;
+            return remote;
+          }
+        }
+        if (clientCtx && clientCtx.remote && clientCtx.remote.session) {
+          clientRemote = clientCtx.remote;
+          return clientCtx.remote;
+        }
+      } catch {
+        /* service lookup is best effort */
+      }
+      return null;
+    }
+
+    /**
+     * Fallback used when the Host plugin predates `fix.create`: the DSH Client
+     * Remote session endpoints exist in the running Host, so create + prompt the
+     * session directly. Keeps the button working without a Host restart.
+     */
+    async function createFixSessionViaRemote(context) {
+      const remote = getClientRemote();
+      if (!remote || !remote.session || typeof remote.session.create !== 'function') {
+        return null;
+      }
+      const projectPath = str(obj(context).projectPath);
+      if (!projectPath) return null;
+      const created = await remote.session.create({ cwd: projectPath });
+      if (!created || !created.ok) {
+        throw new Error(errorText(obj(created && created.error).message || '创建会话失败'));
+      }
+      const sessionId = str(obj(created.value).sessionId);
+      if (!sessionId) throw new Error('创建会话失败：未返回 sessionId');
+      const prompt = buildFixPromptText(obj(context).job, arr(obj(context).findings));
+      const requestId = `code-review-fix-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      let prompted = false;
+      try {
+        const result = await remote.session.prompt({
+          requestId,
+          sessionId,
+          content: [{ type: 'text', text: prompt }],
+          clientTimeZone: (() => {
+            try { return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined; } catch { return undefined; }
+          })(),
+        });
+        prompted = Boolean(result && result.ok);
+      } catch {
+        prompted = false;
+      }
+      return { sessionId, prompted, findings: arr(obj(context).findings).length };
     }
 
     class Boundary extends React.Component {
@@ -3847,20 +3935,34 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         }
       }, [rpc, pushToast, refresh]);
 
-      const createFixSession = React.useCallback(async (id) => {
-        const envelope = await rpc('fix.create', { jobId: str(id) });
-        const payload = unwrapEnvelope(envelope, (value) => Boolean(value && typeof value.sessionId === 'string' && value.sessionId));
-        if (!payload) throw new Error('服务端未返回 sessionId');
-        const sessionId = str(payload.sessionId);
-        const opened = openDshSession(sessionId);
-        if (payload.prompted === false) {
-          pushToast(`修复会话已创建，但问题描述发送失败：${errorText(obj(payload.error).message)}`, 'warn');
-        } else {
-          pushToast(opened
-            ? `已创建修复会话并打开（${num(payload.findings)} 条 findings）`
-            : `已创建修复会话 ${sessionId}，请在左侧会话列表打开`, opened ? 'success' : 'info');
+      const createFixSession = React.useCallback(async (id, context) => {
+        try {
+          const envelope = await rpc('fix.create', { jobId: str(id) });
+          const payload = unwrapEnvelope(envelope, (value) => Boolean(value && typeof value.sessionId === 'string' && value.sessionId));
+          if (!payload) throw new Error('服务端未返回 sessionId');
+          const sessionId = str(payload.sessionId);
+          const opened = openDshSession(sessionId);
+          if (payload.prompted === false) {
+            pushToast(`修复会话已创建，但问题描述发送失败：${errorText(obj(payload.error).message)}`, 'warn');
+          } else {
+            pushToast(opened
+              ? `已创建修复会话并打开（${num(payload.findings)} 条 findings）`
+              : `已创建修复会话 ${sessionId}，请在左侧会话列表打开`, opened ? 'success' : 'info');
+          }
+          refresh();
+          return;
+        } catch (error) {
+          // Host older than the UI: use the DSH Client Remote session endpoints.
+          const fallback = await createFixSessionViaRemote(context).catch((cause) => {
+            throw cause;
+          });
+          if (!fallback) throw error;
+          const opened = openDshSession(fallback.sessionId);
+          pushToast(
+            `${fallback.prompted ? '已创建修复会话' : '修复会话已创建（提示词未发送）'}${opened ? '并打开' : ` ${fallback.sessionId}，请在左侧会话列表打开`}。插件 Host 版本较旧，重启 DSH 可启用完整模式`,
+            fallback.prompted ? 'success' : 'warn',
+          );
         }
-        refresh();
       }, [rpc, pushToast, refresh]);
 
       const deleteJob = React.useCallback(async (id) => {
@@ -4019,6 +4121,15 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       apply(ctx) {
         clientCtx = ctx;
         connection = ctx.connection;
+        if (typeof ctx.inject === 'function') {
+          ctx.inject(['remote'], (scope) => {
+            try {
+              clientRemote = scope.remote ?? scope.get?.('remote') ?? null;
+            } catch {
+              clientRemote = null;
+            }
+          });
+        }
 
         const locale = ctx.get('locale');
         if (locale && typeof locale.register === 'function') {
