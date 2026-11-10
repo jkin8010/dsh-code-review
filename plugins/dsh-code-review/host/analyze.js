@@ -1,5 +1,5 @@
 /**
- * @qise/dsh-code-review — host/analyze.js
+ * @jkin8010/dsh-code-review — host/analyze.js
  *
  * Deterministic, offline structural analysis for the three "scan" review kinds
  * (architecture / module / flow) plus the added-line heuristics used by diff

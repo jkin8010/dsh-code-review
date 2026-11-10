@@ -1,5 +1,5 @@
 /**
- * @qise/dsh-code-review — host/git.js
+ * @jkin8010/dsh-code-review — host/git.js
  *
  * Read-only git probes for the review dashboard. Every export resolves into
  * plain JSON (or an array of it) and never rejects: a broken repository turns

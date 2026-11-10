@@ -1,5 +1,5 @@
 /**
- * Host half of the code review studio (`@qise/dsh-code-review`).
+ * Host half of the code review studio (`@jkin8010/dsh-code-review`).
  *
  * The plugin owns every side effect: it shells out to the
  * [open-code-review](https://github.com/alibaba/open-code-review) CLI (`ocr`),

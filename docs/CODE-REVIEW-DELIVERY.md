@@ -1,6 +1,6 @@
 # dsh-code-review 交付说明
 
-> 插件包：`plugins/dsh-code-review`（`@qise/dsh-code-review` v0.1.0）
+> 插件包：`plugins/dsh-code-review`（`@jkin8010/dsh-code-review` v0.1.2）
 > 依赖：`ocr`（`@alibaba-group/open-code-review`）v1.13.6、`git`、Node 22+
 > 本机已安装到 desktop profile；**重启 DSH 后生效**（见文末）。
 
@@ -95,10 +95,10 @@ plugins/dsh-code-review/
 已于本机 desktop profile 完成：
 
 - `~/.dsh/profiles/desktop/package.json`：新增依赖
-  `"@qise/dsh-code-review": "link:/Users/jkin/workspace/jkin8010/dhs-feishu-plugin"`
+  `"@jkin8010/dsh-code-review": "link:/Users/jkin/workspace/jkin8010/dhs-feishu-plugin"`
   （仓库根 `package.json` 是 bundle 清单，exports 指向 `plugins/dsh-code-review/`）
-  和 `dsh.profile.bundles` 末位 `@qise/dsh-code-review`；
-- `~/.dsh/profiles/desktop/node_modules/@qise/dsh-code-review` 已链接；
+  和 `dsh.profile.bundles` 末位 `@jkin8010/dsh-code-review`；
+- `~/.dsh/profiles/desktop/node_modules/@jkin8010/dsh-code-review` 已链接；
 - `~/.dsh/profiles/desktop/cordis.patch.yml` 追加插件配置（projectRoots、extraProjects、ocr 选项）。
 
 `plugin_manager` 返回 `restart-required`（package-moved），因此需要**重启 DSH** 让 Host 行挂载，

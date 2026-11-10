@@ -1,5 +1,5 @@
 window.__ModuleLoader__.load({
-  id: '@qise/dsh-code-review',
+  id: '@jkin8010/dsh-code-review',
   factory(require) {
     const React = require('react');
     const h = React.createElement;
@@ -3314,7 +3314,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
           h('div', { key: 'about', className: 'cr-drawer-section' },
             h('div', { className: 'cr-drawer-title' }, h(Icon, { name: 'shield', size: 11 }), '关于'),
             h('div', { style: { marginTop: 8 } },
-              h(KV, { label: '插件', value: '@qise/dsh-code-review' }),
+              h(KV, { label: '插件', value: '@jkin8010/dsh-code-review' }),
               h(KV, { label: 'OCR', value: str(config.ocrVersion, 'open-code-review') }),
               h(KV, { label: '快照版本', value: `v${num(snapshot.version)}` }),
               h(KV, { label: '生成时间', value: fmtStamp(snapshot.generatedAt) }),

@@ -1,6 +1,6 @@
 # dsh-code-review — 实现契约 v1
 
-插件包：`plugins/dsh-code-review`（`@qise/dsh-code-review`）。
+插件包：`plugins/dsh-code-review`（`@jkin8010/dsh-code-review`）。
 基于 [alibaba/open-code-review](https://github.com/alibaba/open-code-review)（`ocr` CLI v1.13+）。
 左侧栏入口 `sidebar.panellist`（id `code-review`）+ 整页 `main`（key `code-review`）。
 Client 通过认证 RPC 取数据，Host 端持有全部 I/O（git / ocr 子进程 / 持久化）。

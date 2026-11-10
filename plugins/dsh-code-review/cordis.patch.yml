@@ -1,6 +1,6 @@
 - insert:
     - id: qise-code-review
-      name: '@qise/dsh-code-review'
+      name: '@jkin8010/dsh-code-review'
       config:
         # 自动发现这些目录下的 git 项目（直接子目录）。
         projectRoots:

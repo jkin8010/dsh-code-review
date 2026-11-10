@@ -1,5 +1,5 @@
 /**
- * @qise/dsh-code-review — host/ocr.js
+ * @jkin8010/dsh-code-review — host/ocr.js
  *
  * Thin, defensive adapter around the `ocr` CLI (alibaba/open-code-review).
  *

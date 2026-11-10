@@ -70,7 +70,7 @@ ocr llm test           # 验证连通性
 
 ```yaml
 - id: qise-code-review
-  name: '@qise/dsh-code-review'
+  name: '@jkin8010/dsh-code-review'
   config:
     projectRoots: [/Users/you/workspace]       # 自动发现其下有 .git 的直接子目录
     extraProjects: [/Users/you/current/repo]    # 额外项目（可非 Git）

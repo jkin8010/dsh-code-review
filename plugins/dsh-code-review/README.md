@@ -1,4 +1,4 @@
-# 代码评审中心（@qise/dsh-code-review）
+# 代码评审中心（@jkin8010/dsh-code-review）
 
 DSH 左侧栏入口 + 整页**代码评审工作台**：把 [alibaba/open-code-review](https://github.com/alibaba/open-code-review)
 （`ocr` CLI）的 AI 评审能力、仓库本地结构分析和评审历史，汇成一屏可操作、可追踪的评审中心。
@@ -89,7 +89,7 @@ plugin_manager → action: install_bundle
 ```yaml
 - insert:
     - id: qise-code-review
-      name: '@qise/dsh-code-review'
+      name: '@jkin8010/dsh-code-review'
       config:
         projectRoots: [/Users/jkin/workspace/jkin8010]   # 自动发现其下有 .git 的直接子目录
         extraProjects: []                                 # 额外纳入的项目（可非 Git）
