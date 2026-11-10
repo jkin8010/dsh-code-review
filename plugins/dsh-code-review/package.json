@@ -1,6 +1,6 @@
 {
   "name": "@jkin8010/dsh-code-review",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "type": "module",
   "description": "代码评审中心：基于 alibaba/open-code-review 的 DeepSeek Harness 插件，支持当前改动/提交/分支、项目架构、代码模块与信息流业务工作流评审，提供实时进度与动态、GitHub 风格提交热力图与评审统计。",
