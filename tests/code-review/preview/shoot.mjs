@@ -419,6 +419,28 @@ async function main() {
   await page.waitForTimeout(300);
   await shoot('flow');
 
+  // -- flow graph wheel zoom / reset ---------------------------------------
+  const graphBox = await page.$eval('.cr-graph-svg', (element) => {
+    const rect = element.getBoundingClientRect();
+    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+  });
+  const viewBoxBefore = await page.$eval('.cr-graph-svg', (element) => element.getAttribute('viewBox'));
+  await page.mouse.move(graphBox.x, graphBox.y);
+  await page.mouse.wheel(0, -320);
+  await page.waitForTimeout(250);
+  const viewBoxAfter = await page.$eval('.cr-graph-svg', (element) => element.getAttribute('viewBox'));
+  const toolsVisible = await page.$$eval('.cr-graph-tools', (nodes) => nodes.length > 0);
+  await page.click('.cr-graph-tool.is-text');
+  await page.waitForTimeout(200);
+  const viewBoxReset = await page.$eval('.cr-graph-svg', (element) => element.getAttribute('viewBox'));
+  const zoomOk = Boolean(toolsVisible && viewBoxBefore && viewBoxAfter && viewBoxBefore !== viewBoxAfter && viewBoxReset === viewBoxBefore);
+  results.push({
+    view: 'flow-zoom',
+    ok: zoomOk,
+    issues: zoomOk ? [] : [`信息流图缩放异常：tools=${toolsVisible} before=${viewBoxBefore} after=${viewBoxAfter} reset=${viewBoxReset}`],
+  });
+  if (!zoomOk) failed = true;
+
   // -- settings (bonus capture, not part of the 7 required shots) -----------
   await openView('settings');
   await checkBasic('settings');

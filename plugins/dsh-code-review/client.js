@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     // 1. 常量 / 字典
     // =====================================================================
 
-    const PLUGIN_VERSION = '0.8.2';
+    const PLUGIN_VERSION = '0.8.3';
     const ENDPOINT = 'code-review';
     const PANEL_ID = 'code-review';
     const PANEL_ORDER = 24;
@@ -941,7 +941,15 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
 .cr-graph-canvas{position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden;
   background:radial-gradient(circle at 50% 40%,rgba(53,224,200,.055),transparent 62%),var(--code-bg);
   height:500px;min-height:400px}
-.cr-graph-svg{width:100%;height:100%;display:block}
+.cr-graph-svg{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+.cr-graph-tools{position:absolute;right:12px;top:12px;z-index:5;display:flex;align-items:center;gap:4px;
+  padding:4px;border:1px solid var(--line);border-radius:10px;background:var(--overlay);
+  box-shadow:0 8px 24px -18px var(--shadow);backdrop-filter:blur(8px)}
+.cr-graph-tool{min-width:24px;height:24px;padding:0 6px;border-radius:7px;border:1px solid transparent;background:transparent;
+  color:var(--muted);font-size:13px;font-weight:650;cursor:pointer;line-height:1}
+.cr-graph-tool:hover{background:var(--surface-2);color:var(--text);border-color:var(--line)}
+.cr-graph-tool.is-text{font-size:11px;font-weight:560}
+.cr-graph-zoom{min-width:38px;text-align:center;font-family:var(--mono);font-size:10.5px;color:var(--faint)}
 .cr-graph-node{cursor:pointer}
 .cr-graph-node text{font-size:12px;font-weight:600;fill:var(--muted);pointer-events:none}
 .cr-graph-node .cr-graph-sub{font-size:10.5px;fill:var(--muted);font-weight:500;font-family:ui-monospace,Menlo,monospace}
@@ -2918,6 +2926,95 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       });
     }
 
+    /**
+     * Pan/zoom viewport for the SVG graphs. Wheel zooms around the cursor,
+     * pointer drag pans, and the toolbar resets to the fitted view. Implemented
+     * by changing the SVG viewBox so labels, markers and strokes scale together.
+     */
+    function useGraphZoom(width, height) {
+      const svgRef = React.useRef(null);
+      const [view, setView] = React.useState({ x: 0, y: 0, w: width, h: height });
+      const viewRef = React.useRef(view);
+      viewRef.current = view;
+      const dragRef = React.useRef(null);
+      const pointOf = (event) => {
+        const svg = svgRef.current;
+        if (!svg) return null;
+        const matrix = svg.getScreenCTM?.();
+        if (!matrix) return null;
+        const point = svg.createSVGPoint();
+        point.x = event.clientX;
+        point.y = event.clientY;
+        return point.matrixTransform(matrix.inverse());
+      };
+      const zoomAt = React.useCallback((factor, screenPoint) => {
+        const svg = svgRef.current;
+        const current = viewRef.current;
+        let local = { x: current.x + current.w / 2, y: current.y + current.h / 2 };
+        if (screenPoint && svg) {
+          const matrix = svg.getScreenCTM?.();
+          if (matrix) {
+            const point = svg.createSVGPoint();
+            point.x = screenPoint.x;
+            point.y = screenPoint.y;
+            local = point.matrixTransform(matrix.inverse());
+          }
+        }
+        const minWidth = width / 8;
+        const maxWidth = width * 1.4;
+        const nextWidth = Math.min(maxWidth, Math.max(minWidth, current.w / factor));
+        const nextHeight = nextWidth * (height / width);
+        const ratio = nextWidth / current.w;
+        setView({
+          x: local.x - (local.x - current.x) * ratio,
+          y: local.y - (local.y - current.y) * ratio,
+          w: nextWidth,
+          h: nextHeight,
+        });
+      }, [width, height]);
+      React.useEffect(() => {
+        const svg = svgRef.current;
+        if (!svg) return undefined;
+        const onWheel = (event) => {
+          event.preventDefault();
+          zoomAt(event.deltaY < 0 ? 1.13 : 1 / 1.13, { x: event.clientX, y: event.clientY });
+        };
+        svg.addEventListener('wheel', onWheel, { passive: false });
+        return () => svg.removeEventListener('wheel', onWheel);
+      }, [zoomAt]);
+      const onPointerDown = (event) => {
+        if (event.button !== 0) return;
+        const origin = pointOf(event);
+        if (!origin) return;
+        dragRef.current = { x: origin.x, y: origin.y, vx: viewRef.current.x, vy: viewRef.current.y };
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+      };
+      const onPointerMove = (event) => {
+        const drag = dragRef.current;
+        if (!drag) return;
+        const current = pointOf(event);
+        if (!current) return;
+        setView((previous) => ({
+          ...previous,
+          x: drag.vx - (current.x - drag.x),
+          y: drag.vy - (current.y - drag.y),
+        }));
+      };
+      const onPointerUp = (event) => {
+        dragRef.current = null;
+        event.currentTarget.releasePointerCapture?.(event.pointerId);
+      };
+      return {
+        svgRef,
+        viewBox: `${view.x} ${view.y} ${view.w} ${view.h}`,
+        percent: Math.round((width / view.w) * 100),
+        zoomIn: () => zoomAt(1.25),
+        zoomOut: () => zoomAt(1 / 1.25),
+        reset: () => setView({ x: 0, y: 0, w: width, h: height }),
+        pointer: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp },
+      };
+    }
+
     function ArchGraph(props) {
       const spec = props || {};
       const graph = obj(spec.graph);
@@ -2927,6 +3024,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       const width = 1180;
       const height = 560;
       const [hover, setHover] = React.useState(null);
+      const zoom = useGraphZoom(width, height);
       const layout = React.useMemo(() => computeArchLayout(nodes, width, height), [nodes]);
       const byId = React.useMemo(() => {
         const map = new Map();
@@ -2954,7 +3052,12 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       const connected = selected ? (neighbors.get(selected) || new Set()) : null;
 
       return h('div', { style: { position: 'relative', height: '100%' } },
-        h('svg', { className: 'cr-graph-svg', viewBox: `0 0 ${width} ${height}`, preserveAspectRatio: 'xMidYMid meet' },
+        h('div', { className: 'cr-graph-tools' },
+          h('button', { type: 'button', className: 'cr-graph-tool', onClick: zoom.zoomOut, title: '缩小' }, '−'),
+          h('span', { className: 'cr-graph-zoom' }, `${zoom.percent}%`),
+          h('button', { type: 'button', className: 'cr-graph-tool', onClick: zoom.zoomIn, title: '放大' }, '＋'),
+          h('button', { type: 'button', className: 'cr-graph-tool is-text', onClick: zoom.reset, title: '恢复适配视图' }, '重置')),
+        h('svg', { ref: zoom.svgRef, className: 'cr-graph-svg', viewBox: zoom.viewBox, preserveAspectRatio: 'xMidYMid meet', ...zoom.pointer },
           h('defs', null,
             h('marker', { id: 'cr-arrow', viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 5, markerHeight: 5, orient: 'auto-start-reverse' },
               h('path', { d: 'M0 0 L10 5 L0 10 z', fill: 'rgba(140,170,205,.6)' })),
@@ -3015,7 +3118,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             h('text', { x: entry.labelX, y: entry.labelY + 12, textAnchor: entry.side, className: 'cr-graph-sub' },
               `${fmtCompact(num(node.loc))} LOC · ${num(node.files)} 文件`));
           })),
-        h('div', { className: 'cr-graph-canvas-hint' }, '节点大小 = LOC · 颜色 = 风险 · 红虚线 = 循环依赖'),
+        h('div', { className: 'cr-graph-canvas-hint' }, '滚轮缩放 · 拖拽平移 · 节点大小 = LOC · 颜色 = 风险 · 红虚线 = 循环依赖'),
         h('div', { className: 'cr-graph-canvas-legend' },
           ['low', 'medium', 'high', 'critical'].map((risk) => h('span', { key: risk },
             h('i', { style: { background: riskColor(risk) } }),
@@ -3195,6 +3298,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       const width = 1180;
       const height = 560;
       const [hover, setHover] = React.useState(null);
+      const zoom = useGraphZoom(width, height);
       const layout = React.useMemo(() => computeFlowLayout(nodes, width, height), [nodes]);
       const selected = str(spec.selected);
       const neighbors = React.useMemo(() => {
@@ -3212,7 +3316,12 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       const related = selected ? (neighbors.get(selected) || new Set()) : null;
 
       return h('div', { style: { position: 'relative', height: '100%' } },
-        h('svg', { className: 'cr-graph-svg', viewBox: `0 0 ${width} ${height}`, preserveAspectRatio: 'xMidYMid meet' },
+        h('div', { className: 'cr-graph-tools' },
+          h('button', { type: 'button', className: 'cr-graph-tool', onClick: zoom.zoomOut, title: '缩小' }, '−'),
+          h('span', { className: 'cr-graph-zoom' }, `${zoom.percent}%`),
+          h('button', { type: 'button', className: 'cr-graph-tool', onClick: zoom.zoomIn, title: '放大' }, '＋'),
+          h('button', { type: 'button', className: 'cr-graph-tool is-text', onClick: zoom.reset, title: '恢复适配视图' }, '重置')),
+        h('svg', { ref: zoom.svgRef, className: 'cr-graph-svg', viewBox: zoom.viewBox, preserveAspectRatio: 'xMidYMid meet', ...zoom.pointer },
           h('defs', null,
             h('marker', { id: 'cr-flow-arrow', viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 5, markerHeight: 5, orient: 'auto-start-reverse' },
               h('path', { d: 'M0 0 L10 5 L0 10 z', fill: 'rgba(140,170,205,.55)' })),
@@ -3274,7 +3383,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
               className: 'cr-graph-sub',
             }, `${str(entry.node.path, '').slice(0, 30)}`));
           })),
-        h('div', { className: 'cr-graph-canvas-hint' }, '点击节点查看关联文件与 findings'),
+        h('div', { className: 'cr-graph-canvas-hint' }, '滚轮缩放 · 拖拽平移 · 点击节点查看关联文件与 findings'),
         hover ? h('div', {
           className: 'cr-tooltip',
           style: {
