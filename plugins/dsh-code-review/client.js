@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     // 1. 常量 / 字典
     // =====================================================================
 
-    const PLUGIN_VERSION = '0.6.0';
+    const PLUGIN_VERSION = '0.6.1';
     const ENDPOINT = 'code-review';
     const PANEL_ID = 'code-review';
     const PANEL_ORDER = 24;
@@ -2169,6 +2169,8 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             h('span', null, '·'),
             h('span', null, `${num(obj(job.counts).filesReviewed)}/${num(obj(job.counts).filesPlanned)} 文件`),
             h('span', null, '·'),
+            num(job.resolvedCount) > 0 ? h('span', { style: { color: '#3ddc97' } }, `已修复 ${num(job.resolvedCount)}`) : null,
+            num(job.resolvedCount) > 0 ? h('span', null, '·') : null,
             h('span', { className: 'cr-mono' }, fmtAgo(job.createdAt, spec.now)),
             h('span', null, '·'),
             h('span', { className: 'cr-ellipsis', style: { maxWidth: 300 } }, str(obj(job.summary).headline, str(job.subtitle))))),
@@ -2226,9 +2228,10 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
     // 9. 详情视图
     // =====================================================================
 
-    function findingsToMarkdown(job, findings) {
+    function findingsToMarkdown(job, findings, resolutions = {}) {
       const meta = obj(job);
       const counts = severityCounts(findings);
+      const fixedCount = findings.filter((finding) => resolutions[str(finding.key)]).length;
       const lines = [
         `# ${str(meta.title, '代码评审')}`,
         '',
@@ -2237,11 +2240,13 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         `- 引擎：${str(meta.engine, '—')}`,
         `- 耗时：${fmtMs(meta.durationMs)}`,
         `- 问题：共 ${counts.total}（严重 ${counts.critical} / 高 ${counts.high} / 中 ${counts.medium} / 低 ${counts.low}）`,
+        `- 修复状态：已修复 ${fixedCount} · 未修复 ${counts.total - fixedCount}`,
         '',
       ];
       sortFindings(findings).forEach((finding, index) => {
         const severity = SEV_META[str(finding.severity)] || SEV_META.low;
-        lines.push(`## ${index + 1}. [${severity.label}] ${str(finding.path)}:${num(finding.startLine)}`);
+        const fixed = resolutions[str(finding.key)] ? '（已修复）' : '';
+        lines.push(`## ${index + 1}. [${severity.label}]${fixed} ${str(finding.path)}:${num(finding.startLine)}`);
         lines.push('');
         lines.push(`**${str(finding.title)}**`);
         lines.push('');
@@ -2289,12 +2294,28 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       const severity = str(finding.severity, 'low');
       const meta = SEV_META[severity] || SEV_META.low;
       const hasCode = Boolean(str(finding.existingCode) || str(finding.suggestionCode));
-      return h('article', { className: 'cr-finding', style: { '--sev': meta.color }, 'data-finding': str(finding.id) },
+      const fixed = Boolean(spec.fixed);
+      return h('article', {
+        className: `cr-finding${fixed ? ' is-fixed' : ''}`,
+        style: { '--sev': meta.color },
+        'data-finding': str(finding.id),
+        'data-fixed': fixed ? '1' : '0',
+      },
         h('div', { className: 'cr-finding-head' },
           h(SevBadge, { severity }),
           h(CategoryBadge, { category: finding.category }),
           str(finding.source) === 'structural' ? h(Badge, { color: '#b9a6ff', soft: 'rgba(185,166,255,.1)', border: 'rgba(185,166,255,.24)', children: 'structural' }) : null,
+          fixed ? h(Badge, { color: '#3ddc97', soft: 'rgba(61,220,151,.12)', border: 'rgba(61,220,151,.3)', children: '已修复' }) : null,
           h('div', { className: 'cr-finding-tools' },
+            h('button', {
+              type: 'button',
+              className: `cr-btn is-sm${fixed ? ' is-ghost' : ''}`,
+              disabled: Boolean(spec.marking),
+              style: { height: 24, padding: '0 8px', fontSize: 10 },
+              onClick: () => spec.onToggleFix && spec.onToggleFix(finding),
+              title: fixed ? '撤销“已修复”标记' : '标记为已修复',
+            }, h(Icon, { name: spec.marking ? 'clock' : (fixed ? 'refresh' : 'check'), size: 10 }),
+              spec.marking ? '处理中…' : (fixed ? '撤销已修复' : '标记已修复')),
             h(CopyButton, {
               text: str(finding.suggestionCode) || str(finding.content),
               label: '复制建议',
@@ -2329,6 +2350,10 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       const [fileFilter, setFileFilter] = React.useState('all');
       const [query, setQuery] = React.useState('');
       const [fixBusy, setFixBusy] = React.useState(false);
+      const [fixFilter, setFixFilter] = React.useState('all');
+      const [resolutions, setResolutions] = React.useState({});
+      const [markingKey, setMarkingKey] = React.useState('');
+      const rpc = useRpc(spec.connection);
       const toast = useToast();
       const startFixSession = async () => {
         if (fixBusy || !spec.onCreateFix) return;
@@ -2350,12 +2375,39 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         setSevFilter('all');
         setCategoryFilter('all');
         setFileFilter('all');
+        setFixFilter('all');
         setQuery('');
       }, [jobId]);
 
       const detail = obj(loaded.detail);
       const job = obj(detail.job);
       const findings = sortFindings(arr(detail.findings));
+      React.useEffect(() => {
+        setResolutions(obj(detail.resolutions));
+      }, [detail.resolutions, jobId]);
+      const isFixed = (finding) => Boolean(resolutions[str(finding.key)]);
+      const fixedCount = findings.filter(isFixed).length;
+      const openCount = findings.length - fixedCount;
+      const toggleFixed = async (finding) => {
+        const key = str(finding.key);
+        if (!key || markingKey) return;
+        const nextResolved = !isFixed(finding);
+        setMarkingKey(key);
+        try {
+          await rpc('finding.resolve', { jobId: str(job.id), key, resolved: nextResolved });
+          setResolutions((current) => {
+            const next = { ...current };
+            if (nextResolved) next[key] = { status: 'fixed', at: new Date().toISOString() };
+            else delete next[key];
+            return next;
+          });
+          toast(nextResolved ? '已标记为已修复' : '已撤销修复标记', 'success');
+        } catch (error) {
+          toast(errorText(error), 'error');
+        } finally {
+          setMarkingKey('');
+        }
+      };
       const files = arr(detail.files);
       const counts = severityCounts(findings);
       const stageList = arr(job.stages);
@@ -2368,6 +2420,8 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       }, [findings]);
 
       const filteredFindings = findings.filter((finding) => {
+        if (fixFilter === 'fixed' && !isFixed(finding)) return false;
+        if (fixFilter === 'open' && isFixed(finding)) return false;
         if (sevFilter !== 'all' && str(finding.severity) !== sevFilter) return false;
         if (categoryFilter !== 'all' && str(finding.category) !== categoryFilter) return false;
         if (fileFilter !== 'all' && str(finding.path) !== fileFilter) return false;
@@ -2418,6 +2472,11 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             h(TypeBadge, { type: job.type }),
             h('span', { style: { fontSize: 10, color: 'var(--faint)', fontFamily: 'var(--mono)' } }, str(job.subtitle))),
           h('h1', { className: 'cr-detail-title' }, str(job.title, '评审详情')),
+          counts.total
+            ? h('div', { style: { display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' } },
+              h('span', { className: 'cr-chip', style: { color: '#8ff3e4', borderColor: 'rgba(61,220,151,.26)' } }, `已修复 ${fixedCount} / ${counts.total}`),
+              openCount ? h('span', { className: 'cr-chip', style: { color: '#ffd98a' } }, `未修复 ${openCount}`) : h('span', { className: 'cr-chip', style: { color: '#8ff3e4' } }, '全部已修复'))
+            : null,
           h('div', { className: 'cr-chips' },
             h('span', { className: 'cr-chip' }, h(Icon, { name: 'folder', size: 11 }), h('span', null, str(job.projectName, '—'))),
             h('span', { className: 'cr-chip', title: ENGINE_SUBTITLE[engineKey(job.engine)] }, h(Icon, { name: 'zap', size: 11 }), '引擎 ', h('b', { style: { color: engineMeta(job.engine).color } }, engineMeta(job.engine).label)),
@@ -2476,15 +2535,24 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       const findingsCard = h(Card, {
         title: '问题清单',
         icon: 'alert',
-        subtitle: `共 ${counts.total} 条 · 当前显示 ${filteredFindings.length} 条`,
+        subtitle: `共 ${counts.total} 条 · 已修复 ${fixedCount} · 未修复 ${openCount} · 当前显示 ${filteredFindings.length} 条`,
         right: h(CopyButton, {
-          text: findingsToMarkdown(job, findings),
+          text: findingsToMarkdown(job, findings, resolutions),
           label: '复制 Markdown',
           title: '复制完整评审结果为 Markdown',
         }),
         bodyClassName: 'cr-card-body',
         children: h('div', { className: 'cr-stack', style: { gap: 11 } },
           h('div', { className: 'cr-toolbar' },
+            h(Segmented, {
+              value: fixFilter,
+              onChange: setFixFilter,
+              options: [
+                { value: 'all', label: '全部状态' },
+                { value: 'open', label: `未修复 ${openCount}` },
+                { value: 'fixed', label: `已修复 ${fixedCount}` },
+              ],
+            }),
             h(Segmented, {
               value: sevFilter,
               onChange: setSevFilter,
@@ -2514,9 +2582,12 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
               group.items.map((finding) => h(FindingCard, {
                 key: str(finding.id),
                 finding,
+                fixed: isFixed(finding),
+                marking: markingKey === str(finding.key),
+                onToggleFix: toggleFixed,
                 onCopied: () => toast && toast('建议已复制到剪贴板', 'success'),
               }))))
-            : h(EmptyState, { icon: 'alert', text: '没有匹配的问题', hint: '调整严重度 / 类别 / 文件筛选或清空搜索' })),
+            : h(EmptyState, { icon: 'alert', text: '没有匹配的问题', hint: '调整状态 / 严重度 / 类别 / 文件筛选或清空搜索' })),
       });
 
       const sideColumn = h('div', { className: 'cr-detail-side' },
@@ -2594,7 +2665,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
               type: 'button', className: 'cr-btn is-danger', style: { justifyContent: 'flex-start' },
               onClick: () => spec.onCancel && spec.onCancel(str(job.id)),
             }, h(Icon, { name: 'ban', size: 12 }), '取消正在运行的任务') : null,
-            h(CopyButton, { text: findingsToMarkdown(job, findings), label: '复制 Markdown 报告', primary: false, title: '复制完整报告' }),
+            h(CopyButton, { text: findingsToMarkdown(job, findings, resolutions), label: '复制 Markdown 报告', primary: false, title: '复制完整报告' }),
             h('button', {
               type: 'button', className: 'cr-btn is-danger', style: { justifyContent: 'flex-start' },
               onClick: () => spec.onDelete && spec.onDelete(str(job.id)),

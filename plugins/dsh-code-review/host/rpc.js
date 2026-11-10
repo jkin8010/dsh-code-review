@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import * as ocr from './ocr.js';
 import { expandHome, resolveOcrEnv } from './config.js';
 import { createFixSessionForJob } from './fix.js';
-import { errorText } from './shared.js';
+import { errorText, findingKey } from './shared.js';
 import { publicJob } from './snapshot.js';
 
 const SEVERITY_RANK = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -46,10 +46,13 @@ export function createRpcHandler({ config, snapshot, jobs, getServices, logger }
           error.code = 'code-review/not-found';
           throw error;
         }
-        const findings = Array.isArray(job.findings) ? job.findings : [];
+        const findings = (Array.isArray(job.findings) ? job.findings : [])
+          .map((finding) => ({ ...finding, key: findingKey(finding) }));
         return {
           job: publicJob(job, { activity: 40 }),
           findings,
+          resolutions: job.resolutions ?? {},
+          resolvedCount: job.resolvedCount ?? Object.keys(job.resolutions ?? {}).length,
           files: groupFiles(findings),
           graph: job.graph ?? null,
         };
@@ -66,6 +69,10 @@ export function createRpcHandler({ config, snapshot, jobs, getServices, logger }
       }
       case 'delete':
         return { ok: await jobs.delete(payload?.id) };
+      case 'finding.resolve': {
+        const result = await jobs.resolveFinding(payload?.jobId, payload?.key, payload?.resolved !== false);
+        return result;
+      }
       case 'project':
         return { project: await snapshot.getProject(payload ?? {}) };
       case 'fix.create': {

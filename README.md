@@ -25,6 +25,7 @@
 - **项目页 / 架构依赖图 / 信息流泳道图 / 新建评审弹层 / 设置抽屉**
 
 ![评审详情](docs/screenshots/code-review-detail.png)
+![已修复标识与筛选](docs/screenshots/code-review-fixed.png)
 ![项目架构图谱](docs/screenshots/code-review-architecture.png)
 ![信息流业务链路](docs/screenshots/code-review-flow.png)
 
@@ -159,7 +160,8 @@ Agent 会调用 `code_review` → `start`（默认等待评审完成）→ 在�
    （或 Client SessionManager）兜底创建；设置页会显示客户端/Host 版本差异，按提示**完全退出并重新打开 DSH** 即可加载新版 Host。
 5. **项目列表会自动包含**：`projectRoots` 下（默认 `/Users/jkin/workspace`，向下 2 层）的 Git 仓库、
    DSH 工作区、已经评审过的项目（即使不在 `projectRoots` 里）。
-6. **任意项目**：项目下拉最后一项「＋ 添加项目路径…」、项目页「添加项目」、**新建 Review 的项目下拉**都可添加；
+6. **已修复标识**：评审详情可标记/撤销「已修复」，支持按修复状态筛选；新评审未再报出的旧问题会自动标记已修复。
+7. **任意项目**：项目下拉最后一项「＋ 添加项目路径…」、项目页「添加项目」、**新建 Review 的项目下拉**都可添加；
    支持**内置文件夹浏览器**与**手动输入绝对路径**两种方式（浏览器直接列目录、可返回上一级，无需系统对话框），
    添加后持久化在 `<stateDir>/projects.json`。
 

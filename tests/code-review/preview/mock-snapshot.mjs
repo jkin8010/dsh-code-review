@@ -722,7 +722,7 @@ export function buildMock() {
     version: 184,
     ok: true,
     config: {
-      hostVersion: '0.6.0',
+      hostVersion: '0.6.1',
       projectRoots: ['/Users/jkin/workspace/jkin8010'],
       defaultProjectId: current.id,
       defaultProjectPath: '/Users/jkin/workspace/jkin8010/mopng-api',
@@ -805,7 +805,11 @@ export function buildMock() {
 
   function jobDetail(id) {
     const entry = detailMap.get(id) ?? detailMap.get(jobs[0].id);
-    const { job, findings } = entry;
+    const { job } = entry;
+    const findings = entry.findings.map((item) => ({
+      ...item,
+      key: item.key || `k-${item.path}-${item.startLine}-${item.title}`.replace(/[^a-z0-9-]+/gi, '-'),
+    }));
     const fileMap = new Map();
     for (const item of findings) {
       const file = fileMap.get(item.path) ?? { path: item.path, findings: 0, severityMax: 'low', severityCounts: { critical: 0, high: 0, medium: 0, low: 0 } };
@@ -814,9 +818,12 @@ export function buildMock() {
       if (item.severity === 'critical' || (item.severity === 'high' && file.severityMax !== 'critical')) file.severityMax = item.severity;
       fileMap.set(item.path, file);
     }
+    const resolutions = job.resolutions ?? {};
     return {
-      job: { ...job, activity: job.activity },
+      job: { ...job, activity: job.activity, resolvedCount: Object.keys(resolutions).length },
       findings,
+      resolutions,
+      resolvedCount: Object.keys(resolutions).length,
       files: [...fileMap.values()].sort((a, b) => b.findings - a.findings),
       graph: job.graph ?? (job.type === 'architecture' ? buildGraph('architecture') : job.type === 'flow' ? buildGraph('flow') : null),
     };
@@ -847,6 +854,12 @@ export function buildMock() {
         return snapshot;
       case 'job':
         return jobDetail(payload.id);
+      case 'finding.resolve':
+        return {
+          job: jobs[0],
+          resolutions: { [payload.key]: { status: 'fixed', at: new Date().toISOString() } },
+          resolvedCount: 1,
+        };
       case 'graph':
         return graph(payload.kind);
       case 'start': {

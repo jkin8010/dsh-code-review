@@ -377,6 +377,7 @@ export function createSnapshot({ config, store, jobs, git, ocr, logger }) -> { b
 | `retry` | `{ id }` | `{ job }` |
 | `delete` | `{ id }` | `{ ok }` |
 | `project` | `{ projectId?, projectPath?, refresh? }` | `{ project: ProjectView }` |
+| `finding.resolve` | `{ jobId, key, resolved? }` | `{ job, resolutions, resolvedCount }`；持久化“已修复/撤销”标记（key 由 `job` 返回的 findings[].key 提供） |
 | `fix.create` | `{ jobId }` | `{ sessionId, jobId, prompted, findings, title?, projectName?, error? }`；在项目目录新建会话并发送修复提示词 |
 | `project.browse` | `{ path? }` | `{ path, parent, roots:[{name,path}], entries:[{name,path,hidden}] }`；内置目录浏览器，任意环境可用 |
 | `project.add` | `{ path }`（绝对路径，Git 或普通目录） | `{ project, snapshot }`，持久化 + 设为当前 |

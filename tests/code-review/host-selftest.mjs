@@ -14,6 +14,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { apply, name } from '../../plugins/dsh-code-review/index.js';
 import { projectId } from '../../plugins/dsh-code-review/host/config.js';
+import { findingKey } from '../../plugins/dsh-code-review/host/shared.js';
 
 const ROOT = new URL('../../', import.meta.url).pathname;
 const STATE = join(ROOT, 'tests', '.tmp', 'code-review-host-state');
@@ -293,6 +294,42 @@ assert.match(cmdBad.text, /未知选项/);
 const cmdHelp = await registeredCommand.handler(invocation('help'));
 assert.equal(cmdHelp.kind, 'success');
 assert.match(cmdHelp.text, /workflow/);
+
+// --- 4e. finding fixed markers --------------------------------------------
+const markedJob = await rpc('job', { id: changedDone.job.id });
+assert.ok(markedJob.findings.length > 0);
+assert.ok(markedJob.findings.every((finding) => typeof finding.key === 'string' && finding.key.length > 0));
+const markTarget = markedJob.findings[0];
+const marked = await rpc('finding.resolve', { jobId: changedDone.job.id, key: markTarget.key, resolved: true });
+assert.equal(marked.resolvedCount, 1);
+assert.ok(marked.resolutions[markTarget.key]);
+const markedAgain = await rpc('job', { id: changedDone.job.id });
+assert.equal(markedAgain.job.resolvedCount, 1);
+assert.ok(markedAgain.resolutions[markTarget.key]);
+const unmarked = await rpc('finding.resolve', { jobId: changedDone.job.id, key: markTarget.key, resolved: false });
+assert.equal(unmarked.resolvedCount, 0);
+
+// Auto reconcile: a later review without the old finding marks the old report fixed.
+const autoRepo = join(adHocRoot, 'auto-fix');
+await mkdir(autoRepo, { recursive: true });
+execFileSync('git', ['init', '-q'], { cwd: autoRepo });
+execFileSync('git', ['config', 'user.email', 't@t'], { cwd: autoRepo });
+execFileSync('git', ['config', 'user.name', 't'], { cwd: autoRepo });
+const safeSource = 'def run(value):\n    return value\n';
+await writeFile(join(autoRepo, 'app.py'), safeSource);
+execFileSync('git', ['add', '.'], { cwd: autoRepo });
+execFileSync('git', ['commit', '-qm', 'init'], { cwd: autoRepo });
+await writeFile(join(autoRepo, 'app.py'), 'def run(value):\n    return eval(value)\n');
+const riskyJob = await rpc('start', { type: 'workspace', projectPath: autoRepo });
+const riskyDone = await waitFor(riskyJob.job.id);
+assert.ok(riskyDone.findings.length > 0, 'structural review must flag the eval diff');
+await writeFile(join(autoRepo, 'app.py'), safeSource);
+const cleanJob = await rpc('start', { type: 'workspace', projectPath: autoRepo });
+const cleanDone = await waitFor(cleanJob.job.id);
+assert.equal(cleanDone.findings.length, 0, 'reverted tree must review clean');
+const reconciled = await rpc('job', { id: riskyDone.job.id });
+assert.ok(reconciled.job.resolvedCount > 0, 'old report findings must be auto-marked fixed');
+assert.ok(reconciled.resolutions[findingKey(riskyDone.findings[0])]);
 
 // --- 5. job listing, cancel and retry wiring ------------------------------
 const after = await snapshot();

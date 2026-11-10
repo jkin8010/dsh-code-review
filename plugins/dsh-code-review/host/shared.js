@@ -44,6 +44,17 @@ export function hash(text, length = 12) {
   return createHash('sha1').update(String(text ?? '')).digest('hex').slice(0, length);
 }
 
+/**
+ * Stable identity for one finding inside a review job. Used by the persisted
+ * fixed/resolved marks so re-rendering or reloading keeps the same keys.
+ */
+export function findingKey(finding) {
+  return hash(
+    [finding?.path ?? '', finding?.startLine ?? 0, finding?.endLine ?? 0, finding?.title ?? ''].join('|'),
+    16,
+  );
+}
+
 export function slug(text) {
   return String(text ?? '')
     .toLowerCase()

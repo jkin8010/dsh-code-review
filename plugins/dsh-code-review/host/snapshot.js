@@ -145,7 +145,7 @@ const PUBLIC_JOB_FIELDS = [
   'id', 'seq', 'projectId', 'projectName', 'projectPath', 'projectKind', 'type',
   'title', 'subtitle', 'scope', 'engine', 'engineDetail', 'options', 'status',
   'stage', 'progress', 'createdAt', 'startedAt', 'finishedAt', 'durationMs',
-  'counts', 'stages', 'error', 'plan', 'summary', 'artifacts', 'message',
+  'counts', 'stages', 'error', 'plan', 'summary', 'artifacts', 'message', 'resolvedCount',
 ];
 
 export function publicJob(job, { activity = 0 } = {}) {

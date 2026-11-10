@@ -231,6 +231,22 @@ async function main() {
   if (detailIssues.length) failed = true;
   await shoot('detail');
 
+  // -- fixed finding marker -------------------------------------------------
+  const markClicked = await page.evaluate(() => {
+    const button = [...document.querySelectorAll('button')].find((node) => node.textContent.trim() === '标记已修复');
+    if (button) button.click();
+    return Boolean(button);
+  });
+  await page.waitForTimeout(500);
+  const marked = await page.evaluate(() => ({
+    fixed: document.querySelectorAll('.cr-finding[data-fixed="1"]').length,
+    badge: [...document.querySelectorAll('.cr-finding .cr-badge')].some((node) => node.textContent.includes('已修复')),
+  }));
+  const markOk = markClicked && marked.fixed >= 1 && marked.badge;
+  results.push({ view: 'fixed-mark', ok: markOk, issues: markOk ? [] : [`已修复标记未生效：clicked=${markClicked} fixed=${marked.fixed} badge=${marked.badge}`] });
+  if (!markOk) failed = true;
+  await page.screenshot({ path: join(SHOTS, 'code-review-fixed.png'), fullPage: false, animations: 'disabled' });
+
   // -- fix session fallback (old Host) --------------------------------------
   const fixClicked = await page.evaluate(() => {
     const button = [...document.querySelectorAll('button')].find((node) => node.textContent.includes('新建修复 Session'));

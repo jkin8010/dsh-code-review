@@ -6,7 +6,7 @@ import { readProjectFile, walkSourceFiles } from './files.js';
 import { promisify } from 'node:util';
 import {
   CATEGORIES, SEVERITIES, clamp01, countFindings, dateKey, errorText, finding,
-  hash, maxSeverity, moduleOfPath, nowIso, pct, severityRank, trimText,
+  findingKey, hash, maxSeverity, moduleOfPath, nowIso, pct, severityRank, trimText,
 } from './shared.js';
 import {
   buildBackground, buildRules, buildScanAnchorPaths, buildSummaryNotes, buildTitle,
@@ -242,6 +242,54 @@ export function createJobs({
     };
   }
 
+  function syncResolvedCount(job) {
+    const keys = new Set(Object.keys(job?.resolutions ?? {}));
+    job.resolvedCount = keys.size;
+    return keys.size;
+  }
+
+  function scopeKey(job) {
+    const scope = job?.scope ?? {};
+    const parts = [];
+    if (Array.isArray(scope.paths)) parts.push(`paths:${[...scope.paths].sort().join(',')}`);
+    if (scope.commit) parts.push(`commit:${scope.commit}`);
+    if (scope.from || scope.to) parts.push(`range:${scope.from ?? ''}..${scope.to ?? ''}`);
+    if (scope.flowName) parts.push(`flow:${scope.flowName}`);
+    return parts.join('|');
+  }
+
+  /**
+   * When a newer review of the same project/scope no longer reports an old
+   * finding, mark the old report entry as fixed. Conservative: only the same
+   * review type and the same scope participate, and existing marks are kept.
+   */
+  async function reconcilePreviousFixes(job) {
+    const currentKeys = new Set((job.findings ?? []).map(findingKey));
+    const previous = api.list()
+      .filter((item) => item.id !== job.id
+        && item.status === 'completed'
+        && item.projectPath === job.projectPath
+        && item.type === job.type
+        && scopeKey(item) === scopeKey(job))
+      .slice(0, 2);
+    for (const item of previous) {
+      const full = await api.getFull(item.id).catch(() => null);
+      if (!full || !Array.isArray(full.findings)) continue;
+      full.resolutions = full.resolutions ?? {};
+      let changed = false;
+      for (const finding of full.findings) {
+        const key = findingKey(finding);
+        if (currentKeys.has(key) || full.resolutions[key]) continue;
+        full.resolutions[key] = { status: 'fixed', at: nowIso(), auto: true };
+        changed = true;
+      }
+      if (changed) {
+        syncResolvedCount(full);
+        await store.persistNow(full);
+      }
+    }
+  }
+
   async function finish(job, { status, error = null, message = '' } = {}) {
     job.status = status;
     job.finishedAt = nowIso();
@@ -270,7 +318,10 @@ export function createJobs({
     delete job._cancel;
     delete job._controller;
     store.saveJob(job, { final: true });
-    if (status === 'completed') store.recordReview(job);
+    if (status === 'completed') {
+      store.recordReview(job);
+      void reconcilePreviousFixes(job).catch((cause) => log('warn', `fix reconciliation failed: ${errorText(cause)}`));
+    }
     logEvent(job, status === 'completed' ? 'success' : 'error',
       status === 'completed'
         ? `评审完成：${job.counts.findings} 个问题 · ${job.counts.filesReviewed} 个文件`
@@ -835,6 +886,27 @@ export function createJobs({
         }
       }
       return job;
+    },
+
+    async resolveFinding(id, key, resolved = true) {
+      const job = await api.getFull(id);
+      if (!job) {
+        const error = new Error(`评审 ${id} 不存在`);
+        error.code = 'code-review/not-found';
+        throw error;
+      }
+      const valid = new Set((job.findings ?? []).map(findingKey));
+      if (!valid.has(String(key))) {
+        const error = new Error('该条问题不存在或已被新报告替换');
+        error.code = 'code-review/bad-request';
+        throw error;
+      }
+      job.resolutions = job.resolutions ?? {};
+      if (resolved) job.resolutions[String(key)] = { status: 'fixed', at: nowIso(), auto: false };
+      else delete job.resolutions[String(key)];
+      syncResolvedCount(job);
+      await store.persistNow(job);
+      return { job, resolutions: job.resolutions, resolvedCount: job.resolvedCount };
     },
 
     list() {
