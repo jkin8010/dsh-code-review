@@ -103,8 +103,8 @@ function buildHeatmap(days, profile, random) {
 const PROJECT_SEEDS = [
   {
     id: 'p-mopng-api', name: 'mopng-api', path: '/Users/jkin/workspace/jkin8010/mopng-api',
-    branch: 'master', head: 'bf9c296', headSubject: '重构 README.md 和 SKILL.md，更新描述和配置说明',
-    committedAt: iso(TODAY - 2 * 3600_000), dirty: true, remote: 'git@github.com:jkin/mopng-api.git',
+    branch: 'main', head: 'bf9c296', headSubject: '重构 README.md 和 SKILL.md，更新描述和配置说明',
+    committedAt: iso(TODAY - 2 * 3600_000), dirty: true, remote: 'https://github.com/jkin8010/mopng-api.git',
     language: 'Python', fileCount: 48, moduleCount: 7, loc: 8_640, density: 0.9, max: 6,
     modules: [
       { id: 'm-mopng', name: 'mopng', path: 'mopng', files: 14, loc: 3_180, lastCommitAt: iso(TODAY - 2 * 3600_000), lastReviewAt: iso(TODAY - 1 * DAY), reviewCount: 5, findings: { critical: 1, high: 2, medium: 3, low: 1, total: 7 }, risk: 'medium' },
@@ -114,57 +114,54 @@ const PROJECT_SEEDS = [
     ],
   },
   {
-    id: 'p-helpkit-chat', name: 'helpkit-chat', path: '/Users/jkin/workspace/jkin8010/helpkit-chat',
-    branch: 'main', head: '1a4d77e', headSubject: '支持客服工单附件预览',
-    committedAt: iso(TODAY - 9 * 3600_000), dirty: false, remote: 'git@github.com:jkin/helpkit-chat.git',
-    language: 'TypeScript', fileCount: 210, moduleCount: 11, loc: 32_400, density: 0.75, max: 8,
+    id: 'p-mopng-desktop', name: 'mopng-desktop', path: '/Users/jkin/workspace/jkin8010/mopng-desktop',
+    branch: 'main', head: '5de0a44', headSubject: '桌面端接入 mopng 公共 API',
+    committedAt: iso(TODAY - 12 * 3600_000), dirty: false, remote: 'https://github.com/jkin8010/mopng-desktop.git',
+    language: 'TypeScript', fileCount: 128, moduleCount: 10, loc: 21_600, density: 0.72, max: 7,
     modules: [
-      { id: 'm-app', name: 'app', path: 'src/app', files: 42, loc: 7_800, lastCommitAt: iso(TODAY - 9 * 3600_000), lastReviewAt: iso(TODAY - 2 * DAY), reviewCount: 4, findings: { critical: 0, high: 1, medium: 4, low: 2, total: 7 }, risk: 'medium' },
-      { id: 'm-widgets', name: 'widgets', path: 'src/widgets', files: 31, loc: 5_120, lastCommitAt: iso(TODAY - 2 * DAY), lastReviewAt: iso(TODAY - 2 * DAY), reviewCount: 3, findings: { critical: 0, high: 0, medium: 2, low: 1, total: 3 }, risk: 'low' },
+      { id: 'm-app', name: 'app', path: 'src/app', files: 31, loc: 5_200, lastCommitAt: iso(TODAY - 12 * 3600_000), lastReviewAt: iso(TODAY - 4 * DAY), reviewCount: 3, findings: { critical: 0, high: 1, medium: 2, low: 1, total: 4 }, risk: 'medium' },
     ],
-  },
-  {
-    id: 'p-prompt-hub', name: 'prompt-hub', path: '/Users/jkin/workspace/jkin8010/prompt-hub',
-    branch: 'main', head: '7c9b120', headSubject: '提示词版本对比与回滚',
-    committedAt: iso(TODAY - 14 * 3600_000), dirty: false, remote: 'git@github.com:jkin/prompt-hub.git',
-    language: 'TypeScript', fileCount: 96, moduleCount: 9, loc: 14_200, density: 0.68, max: 7,
-    modules: [
-      { id: 'm-server', name: 'server', path: 'src/server', files: 24, loc: 4_100, lastCommitAt: iso(TODAY - 14 * 3600_000), lastReviewAt: iso(TODAY - 4 * DAY), reviewCount: 3, findings: { critical: 0, high: 0, medium: 3, low: 1, total: 4 }, risk: 'low' },
-    ],
-  },
-  {
-    id: 'p-banyugou', name: 'banyugou-browser-extension', path: '/Users/jkin/workspace/jkin8010/banyugou-browser-extension',
-    branch: 'main', head: 'e2a91c0', headSubject: '半语狗翻译划词悬浮层',
-    committedAt: iso(TODAY - 3 * DAY), dirty: false, remote: 'git@github.com:jkin/banyugou-browser-extension.git',
-    language: 'TypeScript', fileCount: 74, moduleCount: 8, loc: 11_800, density: 0.6, max: 5,
-    modules: [],
   },
   {
     id: 'p-fastrtc', name: 'fastrtc-talking-more', path: '/Users/jkin/workspace/jkin8010/fastrtc-talking-more',
     branch: 'main', head: '90ff31a', headSubject: '接入实时语音对话',
-    committedAt: iso(TODAY - 5 * DAY), dirty: false, remote: 'git@github.com:jkin/fastrtc-talking-more.git',
+    committedAt: iso(TODAY - 3 * DAY), dirty: false, remote: 'https://github.com/jkin8010/fastrtc-talking-more.git',
     language: 'Python', fileCount: 39, moduleCount: 6, loc: 6_300, density: 0.55, max: 4,
     modules: [],
   },
   {
-    id: 'p-hexapod', name: 'hexapod-evolve', path: '/Users/jkin/workspace/jkin8010/hexapod-evolve',
-    branch: 'main', head: '33cbe02', headSubject: '步态进化实验记录',
-    committedAt: iso(TODAY - 8 * DAY), dirty: false, remote: 'git@github.com:jkin/hexapod-evolve.git',
-    language: 'Python', fileCount: 62, moduleCount: 5, loc: 9_100, density: 0.42, max: 3,
+    id: 'p-image-matting', name: 'image-matting', path: '/Users/jkin/workspace/jkin8010/image-matting',
+    branch: 'main', head: 'c41e7a2', headSubject: '优化边缘羽化与实时推理',
+    committedAt: iso(TODAY - 5 * DAY), dirty: false, remote: 'https://github.com/jkin8010/image-matting.git',
+    language: 'Rust', fileCount: 84, moduleCount: 8, loc: 15_200, density: 0.48, max: 5,
     modules: [],
   },
   {
-    id: 'p-mopng-desktop', name: 'mopng-desktop', path: '/Users/jkin/workspace/jkin8010/mopng-desktop',
-    branch: 'main', head: '5de0a44', headSubject: '桌面端接入 mopng 公共 API',
-    committedAt: iso(TODAY - 12 * DAY), dirty: false, remote: 'git@github.com:jkin/mopng-desktop.git',
-    language: 'TypeScript', fileCount: 128, moduleCount: 10, loc: 21_600, density: 0.5, max: 5,
+    id: 'p-photocraft', name: 'photocraft', path: '/Users/jkin/workspace/jkin8010/photocraft',
+    branch: 'main', head: '7a2c0f5', headSubject: '新增批量修图与导出队列',
+    committedAt: iso(TODAY - 8 * DAY), dirty: false, remote: 'https://github.com/jkin8010/photocraft.git',
+    language: 'Rust', fileCount: 156, moduleCount: 12, loc: 28_400, density: 0.44, max: 6,
     modules: [],
   },
   {
-    id: 'p-thinking', name: 'thinking-about-intelligence', path: '/Users/jkin/workspace/jkin8010/thinking-about-intelligence',
-    branch: 'main', head: 'a11c9d3', headSubject: '关于智能的笔记',
-    committedAt: iso(TODAY - 21 * DAY), dirty: false, remote: 'git@github.com:jkin/thinking-about-intelligence.git',
-    language: 'Markdown', fileCount: 31, moduleCount: 3, loc: 42_000, density: 0.3, max: 2,
+    id: 'p-design-agent-index', name: 'design-agent-index', path: '/Users/jkin/workspace/jkin8010/design-agent-index',
+    branch: 'main', head: 'e91b3d7', headSubject: '补充设计 Agent 索引与检索接口',
+    committedAt: iso(TODAY - 11 * DAY), dirty: false, remote: 'https://github.com/jkin8010/design-agent-index.git',
+    language: 'Python', fileCount: 42, moduleCount: 5, loc: 5_100, density: 0.4, max: 3,
+    modules: [],
+  },
+  {
+    id: 'p-synapse-router', name: 'synapse-router', path: '/Users/jkin/workspace/jkin8010/synapse-router',
+    branch: 'main', head: '2f6d8b1', headSubject: '路由策略支持按模型与区域分流',
+    committedAt: iso(TODAY - 15 * 3600_000), dirty: true, remote: 'https://github.com/jkin8010/synapse-router.git',
+    language: 'TypeScript', fileCount: 96, moduleCount: 9, loc: 13_800, density: 0.62, max: 5,
+    modules: [],
+  },
+  {
+    id: 'p-dsh-code-review', name: 'dsh-code-review', path: '/Users/jkin/workspace/jkin8010/dsh-code-review',
+    branch: 'main', head: 'deaf7fc', headSubject: 'docs: 更新截图与交付说明',
+    committedAt: iso(TODAY - 26 * 3600_000), dirty: false, remote: 'https://github.com/jkin8010/dsh-code-review.git',
+    language: 'JavaScript', fileCount: 24, moduleCount: 5, loc: 12_800, density: 0.5, max: 3,
     modules: [],
   },
 ];
@@ -431,12 +428,49 @@ function buildJobList(random, projects) {
     // that actually owns this job so paths and module names stay believable.
     const remapPath = (path) => {
       if (project.name === 'mopng-api') return path;
+      const language = project.language;
+      if (language === 'Rust') {
+        return String(path)
+          .replace(/^mopng_api\.py$/, 'src/lib.rs')
+          .replace(/^mopng\/api\/client\.py$/, 'src/client.rs')
+          .replace(/^mopng\/api\/validate\.py$/, 'src/validate.rs')
+          .replace(/^mopng\/tasks\/service\.py$/, 'src/tasks/service.rs')
+          .replace(/^mopng\//, 'src/')
+          .replace(/^migrations\//, 'migrations/')
+          .replace(/^tests\//, 'tests/')
+          .replace(/^scripts\//, 'examples/');
+      }
+      if (language === 'TypeScript') {
+        return String(path)
+          .replace(/^mopng_api\.py$/, 'src/index.ts')
+          .replace(/^mopng\/api\/client\.py$/, 'src/api/client.ts')
+          .replace(/^mopng\/api\/validate\.py$/, 'src/api/validate.ts')
+          .replace(/^mopng\/tasks\/service\.py$/, 'src/tasks/service.ts')
+          .replace(/^mopng\//, 'src/')
+          .replace(/^migrations\//, 'src/db/')
+          .replace(/^tests\//, 'test/')
+          .replace(/^scripts\//, 'tools/');
+      }
+      if (language === 'Python') {
+        return String(path)
+          .replace(/^mopng_api\.py$/, 'app.py')
+          .replace(/^mopng\/api\/client\.py$/, 'app/api/client.py')
+          .replace(/^mopng\/api\/validate\.py$/, 'app/api/validate.py')
+          .replace(/^mopng\/tasks\/service\.py$/, 'app/tasks/service.py')
+          .replace(/^mopng\//, 'app/')
+          .replace(/^migrations\//, 'db/')
+          .replace(/^tests\//, 'tests/')
+          .replace(/^scripts\//, 'scripts/');
+      }
       return String(path)
-        .replace(/^mopng_api\.py$/, 'index.js')
+        .replace(/^mopng_api\.py$/, 'src/index.js')
+        .replace(/^mopng\/api\/client\.py$/, 'src/api/client.js')
+        .replace(/^mopng\/api\/validate\.py$/, 'src/api/validate.js')
+        .replace(/^mopng\/tasks\/service\.py$/, 'src/tasks/service.js')
         .replace(/^mopng\//, 'src/')
         .replace(/^migrations\//, 'db/')
         .replace(/^tests\//, 'test/')
-        .replace(/^scripts\//, 'tools/');
+        .replace(/^scripts\//, 'scripts/');
     };
     const remapModule = (module) => (project.name === 'mopng-api' ? module : ({ mopng: 'src', api: 'src', models: 'src', tasks: 'src', tests: 'test', scripts: 'tools' }[module] ?? module));
     const findings = rawFindings.map((item) => ({

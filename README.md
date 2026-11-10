@@ -28,6 +28,8 @@
 ![项目架构图谱](docs/screenshots/code-review-architecture.png)
 ![信息流业务链路](docs/screenshots/code-review-flow.png)
 
+> 截图为预览 harness 渲染；项目列表取自 [@jkin8010](https://github.com/jkin8010) 的公开仓库名称，评审数据为演示数据。
+
 ## 安装
 
 需要 DeepSeek Harness（含 Web UI）、`ocr` CLI ≥ 1.13、`git`、Node 22+。
