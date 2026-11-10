@@ -2,7 +2,7 @@
 
 简体中文 | [English](CODE-REVIEW-DELIVERY.md)
 
-> 插件包：`plugins/dsh-code-review`（`@jkin8010/dsh-code-review` v0.7.0）
+> 插件包：`plugins/dsh-code-review`（`@jkin8010/dsh-code-review` v0.8.0）
 > 依赖：`ocr`（`@alibaba-group/open-code-review`）v1.13.6、`git`、Node 22+
 > 本机已安装到 desktop profile；**重启 DSH 后生效**（见文末）。
 
@@ -44,6 +44,8 @@
 - **新建 Review**：项目（下拉含「＋ 添加项目路径…」）、6 类评审、scope（commit/from-to/模块路径）、effort、engine、exclude、token budget、背景说明；提交后立即入队。
 - **任意项目**：项目下拉/项目页/新建评审均可添加；内置文件夹浏览器（列目录/上一级/选择当前文件夹）+ 手动输入绝对路径；项目来源自动并入 projectRoots 扫描、DSH 工作区、已评审项目。
 - **设置抽屉**：OCR 版本/路径、LLM 三态（OCR 配置 / DSH 委托 / 未配置）与配置方式、测试 LLM、项目根/额外项目、状态目录、轮询、热力图区间、快照版本。
+
+主题：默认跟随 DSH 外观，设置抽屉可固定深色/浅色；浅色覆盖整页配色。
 
 视觉：深色 code intelligence console，主色青绿 `#35e0c8`，严重度色 critical/high/medium/low，等宽代码，克制动效。
 

@@ -2,7 +2,7 @@
 
 English | [简体中文](CODE-REVIEW-DELIVERY.zh.md)
 
-> Plugin package: `plugins/dsh-code-review` (`@jkin8010/dsh-code-review` v0.7.0)
+> Plugin package: `plugins/dsh-code-review` (`@jkin8010/dsh-code-review` v0.8.0)
 > Dependencies: `ocr` (`@alibaba-group/open-code-review`) v1.13.6, `git`, Node 22+
 > Already installed on this machine into the desktop profile; **takes effect after restarting DSH** (see the end of this document).
 
@@ -44,6 +44,8 @@ When model review fails or is not configured, it degrades to `structural` automa
 - **New Review**: project (the dropdown includes "＋ Add project path…"), 6 review types, scope (commit/from-to/module paths), effort, engine, exclude, token budget, background note; queued immediately after submitting.
 - **Any project**: a project can be added from the project dropdown, the projects page or New Review; built-in folder browser (list directory/up one level/select the current folder) + manual absolute path entry; project sources are automatically merged from the projectRoots scan, the DSH workspace and already-reviewed projects.
 - **Settings drawer**: OCR version/path, LLM tri-state (OCR configured / DSH delegate / unconfigured) and how to configure it, test LLM, project roots/extra projects, state directory, polling, heatmap range, snapshot version.
+
+Themes: follows the DSH appearance by default; the settings drawer pins dark/light, and the light theme covers the whole page.
 
 Visual: dark code intelligence console, primary teal `#35e0c8`, severity colors critical/high/medium/low, monospaced code, restrained motion.
 

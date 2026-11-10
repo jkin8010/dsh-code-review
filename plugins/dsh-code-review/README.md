@@ -47,6 +47,12 @@ After install/restart the plugin registers the model tool **`code_review`**, so 
 The Agent starts a real review (waiting for completion by default) and returns the issue summary and findings in the conversation; the full details are on the sidebar page.
 `action=status/detail/list` queries progress and history, and `wait:false` runs in the background so you can fetch the result afterwards.
 
+## Themes
+
+- Follows the DSH appearance (`data-theme`) by default and switches dark/light automatically
+- The settings drawer can pin **Follow DSH / Dark / Light**; the choice is stored locally
+- The light theme covers the whole page: background, cards, text, severity colors, charts, modals and inputs
+
 ## Host module boundaries
 
 | Module | Responsibility |

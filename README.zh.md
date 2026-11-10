@@ -24,8 +24,10 @@
 - **GitHub 风格热力图**：53 周 × 7 天，提交/评审/问题三种口径，悬停看当日提交、增删、评审、问题，连续天数/最忙一天
 - **详情与统计**：按严重度分组的 findings、文件:行号、原码/建议码双栏对比、复制建议；
   最近评审项目、热点模块、严重度/类别分布、覆盖率
+- **浅色 / 深色主题**：默认跟随 DSH 外观设置，也可在设置抽屉固定为深色或浅色
 - **项目页 / 架构依赖图 / 信息流泳道图 / 新建评审弹层 / 设置抽屉**
 
+![浅色主题](docs/screenshots/code-review-light.png)
 ![评审详情](docs/screenshots/code-review-detail.png)
 ![已修复标识与筛选](docs/screenshots/code-review-fixed.png)
 ![项目架构图谱](docs/screenshots/code-review-architecture.png)

@@ -137,7 +137,41 @@ async function main() {
   results[results.length - 1].statCards = statCards;
   await shoot('overview');
 
+  // -- light theme ----------------------------------------------------------
+  await openView('overview', { theme: 'light' });
+  await checkBasic('overview-light');
+  const lightCheck = await page.evaluate(() => {
+    const app = document.querySelector('.cr-app');
+    const style = app ? getComputedStyle(app) : null;
+    const color = (style?.color || '').match(/\d+/g)?.slice(0, 3).map(Number) || [];
+    return {
+      attr: app?.getAttribute('data-cr-theme') || '',
+      color,
+      bgVar: (style?.getPropertyValue('--bg') || '').trim(),
+    };
+  });
+  const lightLuma = lightCheck.color.length === 3
+    ? (lightCheck.color[0] + lightCheck.color[1] + lightCheck.color[2]) / 3
+    : 999;
+  const lightOk = lightCheck.attr === 'light'
+    && lightLuma < 120
+    && lightCheck.bgVar.toLowerCase() === '#f5f7fb';
+  results.push({
+    view: 'light-theme',
+    ok: lightOk,
+    issues: lightOk ? [] : [`浅色主题未生效：attr=${lightCheck.attr} color=${lightCheck.color} luma=${lightLuma} bgVar=${lightCheck.bgVar}`],
+  });
+  if (!lightOk) failed = true;
+  await page.screenshot({ path: join(SHOTS, 'code-review-light.png'), fullPage: false, animations: 'disabled' });
+  const lightViews = [['detail', 'code-review-light-detail.png'], ['settings', 'code-review-light-settings.png']];
+  for (const [viewName, file] of lightViews) {
+    await openView(viewName, { theme: 'light' });
+    await checkBasic(`light-${viewName}`);
+    await page.screenshot({ path: join(SHOTS, file), fullPage: false, animations: 'disabled' });
+  }
+
   // heatmap metric switch + tooltip (does not break the layout)
+  await openView('overview');
   await page.click('[data-stat="findings"]');
   await page.hover('[data-hm-cell]:nth-child(120)');
   await page.waitForTimeout(280);

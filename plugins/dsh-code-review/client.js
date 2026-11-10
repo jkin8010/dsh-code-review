@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     // 1. 常量 / 字典
     // =====================================================================
 
-    const PLUGIN_VERSION = '0.7.0';
+    const PLUGIN_VERSION = '0.8.0';
     const ENDPOINT = 'code-review';
     const PANEL_ID = 'code-review';
     const PANEL_ORDER = 24;
@@ -21,10 +21,10 @@ window.__ModuleLoader__.load({
 
     const SEVERITIES = ['critical', 'high', 'medium', 'low'];
     const SEV_META = {
-      critical: { label: '严重', color: '#ff5d6c', soft: 'rgba(255,93,108,.13)' },
-      high: { label: '高', color: '#ff8f4d', soft: 'rgba(255,143,77,.13)' },
-      medium: { label: '中', color: '#ffd166', soft: 'rgba(255,209,102,.12)' },
-      low: { label: '低', color: '#6ea8fe', soft: 'rgba(110,168,254,.13)' },
+      critical: { label: '严重', color: 'var(--danger)', soft: 'rgba(255,93,108,.13)' },
+      high: { label: '高', color: 'var(--high)', soft: 'rgba(255,143,77,.13)' },
+      medium: { label: '中', color: 'var(--medium)', soft: 'rgba(255,209,102,.12)' },
+      low: { label: '低', color: 'var(--low)', soft: 'rgba(110,168,254,.13)' },
     };
     const CATEGORY_LABEL = {
       bug: '缺陷', security: '安全', performance: '性能', maintainability: '可维护性',
@@ -32,19 +32,19 @@ window.__ModuleLoader__.load({
     };
     const CATEGORIES = Object.keys(CATEGORY_LABEL);
     const TYPE_META = {
-      workspace: { label: '当前改动', short: '改动', hint: 'staged + unstaged + untracked', color: '#35e0c8' },
-      commit: { label: '单次提交', short: '提交', hint: 'ocr review --commit <sha>', color: '#6ea8fe' },
-      range: { label: '分支对比', short: '对比', hint: 'merge-base 语义 -from/-to', color: '#b9a6ff' },
-      architecture: { label: '项目架构', short: '架构', hint: '模块依赖图 / 环 / 热点', color: '#ffd166' },
-      module: { label: '代码模块', short: '模块', hint: '指定目录或文件', color: '#ff9f6e' },
-      flow: { label: '信息流', short: '信息流', hint: '入口 → 服务 → 数据', color: '#63d9ff' },
+      workspace: { label: '当前改动', short: '改动', hint: 'staged + unstaged + untracked', color: 'var(--accent)' },
+      commit: { label: '单次提交', short: '提交', hint: 'ocr review --commit <sha>', color: 'var(--low)' },
+      range: { label: '分支对比', short: '对比', hint: 'merge-base 语义 -from/-to', color: 'var(--purple)' },
+      architecture: { label: '项目架构', short: '架构', hint: '模块依赖图 / 环 / 热点', color: 'var(--medium)' },
+      module: { label: '代码模块', short: '模块', hint: '指定目录或文件', color: 'var(--warn-soft)' },
+      flow: { label: '信息流', short: '信息流', hint: '入口 → 服务 → 数据', color: 'var(--accent-2-soft)' },
     };
     const STATUS_META = {
-      queued: { label: '排队中', color: '#9aa8bd' },
-      running: { label: '评审中', color: '#35e0c8' },
-      completed: { label: '已完成', color: '#3ddc97' },
-      failed: { label: '失败', color: '#ff5d6c' },
-      cancelled: { label: '已取消', color: '#ffd166' },
+      queued: { label: '排队中', color: 'var(--muted)' },
+      running: { label: '评审中', color: 'var(--accent)' },
+      completed: { label: '已完成', color: 'var(--success)' },
+      failed: { label: '失败', color: 'var(--danger)' },
+      cancelled: { label: '已取消', color: 'var(--medium)' },
     };
     const STAGE_LABEL = {
       resolve: '解析项目', plan: '选取文件', structure: '结构分析',
@@ -59,9 +59,9 @@ window.__ModuleLoader__.load({
     ];
     // 三引擎：ocr（OCR CLI + LLM）/ delegate（OCR 选文件 + DSH 当前会话模型）/ structural（离线结构分析）
     const ENGINE_META = {
-      ocr: { label: 'ocr', color: '#35e0c8', soft: 'rgba(53,224,200,.1)', border: 'rgba(53,224,200,.22)' },
-      delegate: { label: 'delegate', color: '#7cc7ff', soft: 'rgba(124,199,255,.1)', border: 'rgba(124,199,255,.26)' },
-      structural: { label: 'structural', color: '#b9a6ff', soft: 'rgba(185,166,255,.1)', border: 'rgba(185,166,255,.24)' },
+      ocr: { label: 'ocr', color: 'var(--accent)', soft: 'rgba(53,224,200,.1)', border: 'rgba(53,224,200,.22)' },
+      delegate: { label: 'delegate', color: 'var(--accent-2-soft)', soft: 'rgba(124,199,255,.1)', border: 'rgba(124,199,255,.26)' },
+      structural: { label: 'structural', color: 'var(--purple)', soft: 'rgba(185,166,255,.1)', border: 'rgba(185,166,255,.24)' },
     };
     // delegate 的评审由 DSH 当前会话模型执行。
     const ENGINE_SUBTITLE = {
@@ -69,8 +69,8 @@ window.__ModuleLoader__.load({
       delegate: 'OCR 选文件 + DSH 模型评审',
       structural: 'structural 引擎：离线结构分析',
     };
-    const HEAT_LEVELS = ['#151f2b', '#123b3a', '#175e54', '#1f9785', '#35e0c8'];
-    const HEAT_EMPTY = '#0e1620';
+    const HEAT_LEVELS = ['var(--panel-2)', 'var(--accent-bg)', 'var(--accent-bg)', 'var(--accent-deep)', 'var(--accent)'];
+    const HEAT_EMPTY = 'var(--code-bg)';
     const LEVEL_ORDER = ['low', 'medium', 'high', 'critical'];
 
     // UI 文案固定中文；locale/zh.json、locale/en.json 只提供 meta。
@@ -611,11 +611,29 @@ window.__ModuleLoader__.load({
     const css = `
 .cr-app{--bg:#080c14;--panel:#0d1420;--panel-2:#101a28;--line:rgba(255,255,255,.07);
   --line-strong:rgba(255,255,255,.12);--text:#eef4fb;--muted:#dde6f2;--faint:#c6d2e1;
-  --accent:#35e0c8;--accent-2:#6ea8fe;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --accent:#35e0c8;--accent-soft:#8ff3e4;--accent-deep:#1f9785;--accent-bg:rgba(53,224,200,.12);
+  --accent-2:#6ea8fe;--accent-2-soft:#7cc7ff;
+  --success:#3ddc97;--danger:#ff5d6c;--danger-soft:#ff9aa4;--high:#ff8f4d;--medium:#ffd166;--low:#6ea8fe;
+  --purple:#b9a6ff;--warn-soft:#ffe0a1;
+  --surface-faint:rgba(255,255,255,.006);--surface-soft:rgba(255,255,255,.025);--surface:rgba(255,255,255,.03);
+  --surface-2:rgba(255,255,255,.05);--surface-3:rgba(255,255,255,.07);--hover:rgba(255,255,255,.085);
+  --code-bg:#0a1018;--overlay:rgba(9,14,23,.97);--overlay-soft:var(--overlay-soft);--hud-from:rgba(13,20,32,.94);--hud-to:rgba(9,14,22,.74);--hud-soft:rgba(8,12,20,.6);--on-accent:#03120f;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   position:relative;height:100%;width:100%;display:flex;flex-direction:column;overflow:hidden;
   color:var(--text);font-family:system-ui,-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;
   background:radial-gradient(1100px 520px at 10% -12%,rgba(53,224,200,.10),transparent 62%),
-    radial-gradient(920px 480px at 94% -6%,rgba(110,168,254,.09),transparent 60%),#080c14;}
+    radial-gradient(920px 480px at 94% -6%,rgba(110,168,254,.09),transparent 60%),var(--bg);}
+.cr-app[data-cr-theme="light"]{--bg:#f5f7fb;--panel:#ffffff;--panel-2:#eef2f8;--line:rgba(15,23,42,.10);
+  --line-strong:rgba(15,23,42,.18);--text:#0f172a;--muted:#475569;--faint:#64748b;
+  --accent:#0e9382;--accent-soft:#0f766e;--accent-deep:#0b6b5f;--accent-bg:rgba(14,147,130,.10);
+  --accent-2:#2563eb;--accent-2-soft:#1d4ed8;
+  --success:#0f9d6b;--danger:#c81e3a;--danger-soft:#b4233c;--high:#c2410c;--medium:#a16207;--low:#2563eb;
+  --purple:#6d4aff;--warn-soft:#92400e;
+  --surface-faint:rgba(15,23,42,.015);--surface-soft:rgba(15,23,42,.03);--surface:rgba(15,23,42,.045);
+  --surface-2:rgba(15,23,42,.06);--surface-3:rgba(15,23,42,.08);--hover:rgba(15,23,42,.10);
+  --code-bg:#f1f5f9;--overlay:rgba(255,255,255,.98);--overlay-soft:rgba(255,255,255,.98);--hud-from:rgba(255,255,255,.94);--hud-to:rgba(255,255,255,.86);--hud-soft:rgba(248,250,252,.9);--on-accent:#ffffff;
+  background:radial-gradient(1100px 520px at 10% -12%,rgba(14,147,130,.09),transparent 62%),
+    radial-gradient(920px 480px at 94% -6%,rgba(37,99,235,.07),transparent 60%),var(--bg);}
 .cr-app *{box-sizing:border-box}
 .cr-app button{font-family:inherit}
 .cr-mono{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.1px}
@@ -626,7 +644,7 @@ window.__ModuleLoader__.load({
 
 /* ---------- HUD ---------- */
 .cr-hud{flex:0 0 auto;display:flex;align-items:center;gap:14px;height:66px;padding:0 20px;
-  border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(13,20,32,.94),rgba(9,14,22,.74));
+  border-bottom:1px solid var(--line);background:linear-gradient(180deg,var(--hud-from),var(--hud-to));
   backdrop-filter:blur(16px);z-index:6}
 .cr-brand{display:flex;align-items:center;gap:11px;min-width:250px}
 .cr-brand-mark{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:var(--accent);
@@ -637,56 +655,56 @@ window.__ModuleLoader__.load({
 .cr-brand-sub{font-family:var(--mono);font-size:10px;letter-spacing:1.9px;color:var(--faint);text-transform:uppercase;white-space:nowrap}
 .cr-hud-mid{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
 .cr-picker{position:relative;display:flex;align-items:center;gap:8px;height:32px;padding:0 10px 0 11px;border-radius:10px;
-  border:1px solid var(--line);background:rgba(255,255,255,.03)}
+  border:1px solid var(--line);background:var(--surface)}
 .cr-picker:hover{border-color:var(--line-strong)}
 .cr-picker-icon{color:var(--accent);display:grid;place-items:center}
 .cr-picker select{appearance:none;-webkit-appearance:none;background:transparent;border:0;outline:none;color:var(--text);
   font-size:13.5px;font-weight:620;max-width:186px;padding-right:16px;cursor:pointer}
-.cr-picker select option{background:#0d1420;color:var(--text)}
+.cr-picker select option{background:var(--panel);color:var(--text)}
 .cr-picker-caret{position:absolute;right:7px;color:var(--muted);pointer-events:none}
 .cr-health{display:flex;align-items:center;gap:6px}
 .cr-health-chip{display:inline-flex;align-items:center;gap:6px;height:27px;padding:0 9px;border-radius:8px;
-  border:1px solid var(--line);background:rgba(255,255,255,.025);font-size:11.5px;color:var(--muted);white-space:nowrap}
-.cr-health-chip b{font-weight:600;color:#cfe0f2;font-family:var(--mono);font-size:11px}
-.cr-health-chip.is-bad{border-color:rgba(255,93,108,.3);background:rgba(255,93,108,.08);color:#ffb3ba}
-.cr-health-chip.is-warn{border-color:rgba(255,209,102,.26);background:rgba(255,209,102,.07);color:#ffe0a1}
+  border:1px solid var(--line);background:var(--surface-soft);font-size:11.5px;color:var(--muted);white-space:nowrap}
+.cr-health-chip b{font-weight:600;color:var(--muted);font-family:var(--mono);font-size:11px}
+.cr-health-chip.is-bad{border-color:rgba(255,93,108,.3);background:rgba(255,93,108,.08);color:var(--danger-soft)}
+.cr-health-chip.is-warn{border-color:rgba(255,209,102,.26);background:rgba(255,209,102,.07);color:var(--warn-soft)}
 .cr-hud-right{margin-left:auto;display:flex;align-items:center;gap:9px}
 .cr-poll{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;color:var(--muted);white-space:nowrap}
-.cr-poll.is-bad{color:#ff9aa4}
-.cr-poll b{font-family:var(--mono);color:#cfe0f2;font-size:11px;font-weight:600}
+.cr-poll.is-bad{color:var(--danger-soft)}
+.cr-poll b{font-family:var(--mono);color:var(--muted);font-size:11px;font-weight:600}
 .cr-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);flex:0 0 auto}
 .cr-dot.is-live{box-shadow:0 0 0 0 rgba(53,224,200,.6);animation:crPulse 1.9s ease-out infinite}
 .cr-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:31px;padding:0 12px;border-radius:9px;
-  border:1px solid var(--line);background:rgba(255,255,255,.04);color:#cfe0f2;font-size:13px;font-weight:620;
+  border:1px solid var(--line);background:var(--surface-2);color:var(--muted);font-size:13px;font-weight:620;
   cursor:pointer;white-space:nowrap;transition:background .16s ease,border-color .16s ease,transform .16s ease,filter .16s ease}
-.cr-btn:hover{background:rgba(255,255,255,.085);border-color:var(--line-strong)}
+.cr-btn:hover{background:var(--hover);border-color:var(--line-strong)}
 .cr-btn:active{transform:translateY(1px)}
-.cr-btn.is-primary{background:linear-gradient(180deg,#3ae7cf,#1cb8a2);color:#03120f;border-color:rgba(53,224,200,.68);
+.cr-btn.is-primary{background:linear-gradient(180deg,var(--accent-soft),var(--accent));color:var(--on-accent);border-color:rgba(53,224,200,.68);
   box-shadow:0 8px 22px -12px rgba(53,224,200,.9)}
-.cr-btn.is-primary:hover{filter:brightness(1.07);background:linear-gradient(180deg,#48f0d8,#22c8b0)}
+.cr-btn.is-primary:hover{filter:brightness(1.07);background:linear-gradient(180deg,var(--accent-soft),var(--accent))}
 .cr-btn.is-ghost{background:transparent}
-.cr-btn.is-danger{color:#ff9aa4;border-color:rgba(255,93,108,.3);background:rgba(255,93,108,.08)}
+.cr-btn.is-danger{color:var(--danger-soft);border-color:rgba(255,93,108,.3);background:rgba(255,93,108,.08)}
 .cr-btn.is-danger:hover{background:rgba(255,93,108,.15)}
 .cr-btn.is-sm{height:26px;padding:0 9px;font-size:12px;border-radius:8px}
 .cr-btn:disabled{opacity:.45;cursor:not-allowed}
 .cr-icon-btn{width:31px;height:31px;display:grid;place-items:center;border-radius:9px;border:1px solid var(--line);
-  background:rgba(255,255,255,.03);color:#9db0c9;cursor:pointer;transition:background .16s ease,color .16s ease}
-.cr-icon-btn:hover{background:rgba(255,255,255,.08);color:#e6edf6}
+  background:var(--surface);color:var(--muted);cursor:pointer;transition:background .16s ease,color .16s ease}
+.cr-icon-btn:hover{background:var(--hover);color:var(--text)}
 
 /* ---------- tabs ---------- */
 .cr-tabs{flex:0 0 auto;display:flex;align-items:center;gap:4px;height:47px;padding:0 20px;
-  border-bottom:1px solid var(--line);background:rgba(8,12,20,.42)}
+  border-bottom:1px solid var(--line);background:var(--hud-soft)}
 .cr-tab{display:inline-flex;align-items:center;gap:7px;height:30px;padding:0 13px;border-radius:9px;border:1px solid transparent;
   background:transparent;color:var(--muted);font-size:13.5px;font-weight:640;cursor:pointer;
   transition:color .16s ease,background .16s ease,border-color .16s ease}
-.cr-tab:hover{color:#cfe0f2;background:rgba(255,255,255,.045)}
+.cr-tab:hover{color:var(--muted);background:var(--surface-2)}
 .cr-tab.is-active{color:var(--accent);background:rgba(53,224,200,.1);border-color:rgba(53,224,200,.28);
   box-shadow:inset 0 0 18px rgba(53,224,200,.08)}
-.cr-tab-count{font-family:var(--mono);font-size:10.5px;padding:1px 5px;border-radius:5px;background:rgba(255,255,255,.07);color:var(--muted)}
-.cr-tab.is-active .cr-tab-count{background:rgba(53,224,200,.18);color:#8ff3e4}
-.cr-tabs-right{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:12.5px;color:#c6d2e1;font-weight:500}
+.cr-tab-count{font-family:var(--mono);font-size:10.5px;padding:1px 5px;border-radius:5px;background:var(--surface-3);color:var(--muted)}
+.cr-tab.is-active .cr-tab-count{background:rgba(53,224,200,.18);color:var(--accent-soft)}
+.cr-tabs-right{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:12.5px;color:var(--muted);font-weight:500}
 .cr-kbd{display:inline-flex;align-items:center;gap:4px;font-family:var(--mono);font-size:10.5px;color:var(--muted);
-  border:1px solid var(--line);border-bottom-color:rgba(255,255,255,.16);border-radius:5px;padding:1px 5px;background:rgba(255,255,255,.03)}
+  border:1px solid var(--line);border-bottom-color:rgba(255,255,255,.16);border-radius:5px;padding:1px 5px;background:var(--surface)}
 .cr-vsep{width:1px;height:16px;background:var(--line)}
 
 /* ---------- body / scroll ---------- */
@@ -698,12 +716,12 @@ window.__ModuleLoader__.load({
 
 /* ---------- cards ---------- */
 .cr-card{position:relative;border:1px solid var(--line);border-radius:14px;background:
-  linear-gradient(180deg,rgba(255,255,255,.032),rgba(255,255,255,.006)),var(--panel);
+  linear-gradient(180deg,var(--surface),var(--surface-faint)),var(--panel);
   box-shadow:0 20px 44px -38px rgba(0,0,0,.95);min-width:0;overflow:hidden}
 .cr-card.is-glow{border-color:rgba(53,224,200,.2)}
 .cr-card-head{display:flex;align-items:flex-start;gap:10px;padding:12px 14px 10px}
 .cr-card-title{display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:660;letter-spacing:.2px;min-width:0}
-.cr-card-sub{font-size:12.5px;color:#c6d2e1;margin-top:3px;font-weight:500}
+.cr-card-sub{font-size:12.5px;color:var(--muted);margin-top:3px;font-weight:500}
 .cr-card-right{margin-left:auto;display:flex;align-items:center;gap:7px;flex:0 0 auto}
 .cr-card-body{padding:0 14px 14px}
 .cr-card-body.is-tight{padding:0 10px 10px}
@@ -714,8 +732,8 @@ window.__ModuleLoader__.load({
   font-weight:640;letter-spacing:.2px;border:1px solid transparent;white-space:nowrap;line-height:1}
 .cr-badge .cr-icon{opacity:.9}
 .cr-status{display:inline-flex;align-items:center;gap:5px;height:20px;padding:0 7px;border-radius:6px;font-size:11px;
-  font-weight:640;border:1px solid var(--line);background:rgba(255,255,255,.03);color:var(--muted);white-space:nowrap}
-.cr-sev-bar{display:flex;height:5px;border-radius:99px;overflow:hidden;background:rgba(255,255,255,.06);gap:1px}
+  font-weight:640;border:1px solid var(--line);background:var(--surface);color:var(--muted);white-space:nowrap}
+.cr-sev-bar{display:flex;height:5px;border-radius:99px;overflow:hidden;background:var(--surface-3);gap:1px}
 .cr-sev-bar i{display:block;height:100%}
 .cr-dotlist{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
 .cr-dot-item{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);font-family:var(--mono)}
@@ -724,7 +742,7 @@ window.__ModuleLoader__.load({
 /* ---------- stat cards ---------- */
 .cr-stats{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
 .cr-stat{position:relative;padding:12px 14px 11px;border-radius:14px;border:1px solid var(--line);overflow:hidden;
-  background:linear-gradient(180deg,rgba(255,255,255,.038),rgba(255,255,255,.006)),#0c1320}
+  background:linear-gradient(180deg,var(--surface-2),var(--surface-faint)),var(--code-bg)}
 .cr-stat::after{content:'';position:absolute;left:12px;right:12px;bottom:0;height:1px;
   background:linear-gradient(90deg,transparent,rgba(53,224,200,.45),transparent);opacity:.55}
 .cr-stat-head{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);letter-spacing:.3px}
@@ -733,16 +751,16 @@ window.__ModuleLoader__.load({
   font-size:25px;font-weight:660;letter-spacing:-.6px;line-height:1.1}
 .cr-stat-unit{font-family:system-ui,sans-serif;font-size:11.5px;color:var(--faint);font-weight:500;letter-spacing:0}
 .cr-stat-foot{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin-top:6px;min-height:19px}
-.cr-stat-note{font-size:12px;color:#d4deeb;line-height:1.45;font-weight:500}
+.cr-stat-note{font-size:12px;color:var(--text);line-height:1.45;font-weight:500}
 .cr-spark{display:block;overflow:visible}
 
 /* ---------- heatmap ---------- */
 .cr-heat{display:flex;gap:16px}
 .cr-heat-main{flex:1 1 auto;min-width:0;overflow:hidden}
-.cr-heat-metrics{display:inline-flex;align-items:center;gap:2px;padding:2px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.025)}
+.cr-heat-metrics{display:inline-flex;align-items:center;gap:2px;padding:2px;border-radius:8px;border:1px solid var(--line);background:var(--surface-soft)}
 .cr-seg{border:0;background:transparent;color:var(--muted);font-size:11.5px;font-weight:620;height:21px;padding:0 8px;border-radius:6px;cursor:pointer;white-space:nowrap}
-.cr-seg:hover{color:#cfe0f2}
-.cr-seg.is-active{background:rgba(53,224,200,.16);color:#8ff3e4}
+.cr-seg:hover{color:var(--muted)}
+.cr-seg.is-active{background:rgba(53,224,200,.16);color:var(--accent-soft)}
 .cr-heat-body{display:flex;gap:14px;align-items:flex-start}
 .cr-heat-scroll{flex:1 1 auto;min-width:0;overflow:hidden}
 .cr-heat-months{position:relative;height:13px;margin-left:21px}
@@ -751,8 +769,8 @@ window.__ModuleLoader__.load({
 .cr-heat-weekdays{display:grid;grid-template-rows:repeat(7,10px);gap:2px;width:15px;padding-top:0}
 .cr-heat-weekday{font-size:9.5px;color:var(--faint);line-height:10px;text-align:right;font-family:var(--mono)}
 .cr-heat-grid{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,10px);grid-auto-columns:10px;gap:2px}
-.cr-heat-cell{width:10px;height:10px;border-radius:2px;background:var(--heat-0,#151f2b);
-  border:1px solid rgba(255,255,255,.05);
+.cr-heat-cell{width:10px;height:10px;border-radius:2px;background:var(--heat-0,var(--panel-2));
+  border:1px solid var(--surface-2);
   animation:crCellIn .34s cubic-bezier(.2,.8,.3,1) both;cursor:default;transition:box-shadow .12s ease,transform .12s ease}
 .cr-heat-cell.is-empty{background:transparent;border-color:transparent;animation:none}
 .cr-heat-cell:hover{box-shadow:0 0 0 1.5px rgba(255,255,255,.55);transform:translateY(-.5px)}
@@ -762,39 +780,39 @@ window.__ModuleLoader__.load({
 .cr-heat-side{flex:0 0 190px;border-left:1px solid var(--line);padding-left:14px;display:flex;flex-direction:column;gap:5px;justify-content:center}
 .cr-heat-side-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
 .cr-heat-side-k{font-size:11.5px;color:var(--faint);letter-spacing:.4px;white-space:nowrap}
-.cr-heat-side-v{font-family:var(--mono);font-size:14px;font-weight:640;color:#dcebfa;white-space:nowrap}
+.cr-heat-side-v{font-family:var(--mono);font-size:14px;font-weight:640;color:var(--text);white-space:nowrap}
 .cr-heat-side-v small{font-size:10.5px;color:var(--faint);font-weight:500;margin-left:1px}
-.cr-heat-foot{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:9px;padding-top:8px;border-top:1px dashed rgba(255,255,255,.07)}
+.cr-heat-foot{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:9px;padding-top:8px;border-top:1px dashed var(--surface-3)}
 .cr-heat-foot-text{font-size:11.5px;color:var(--faint);font-family:var(--mono);white-space:nowrap}
 .cr-tooltip{position:fixed;z-index:90;pointer-events:none;min-width:132px;padding:8px 10px;border-radius:9px;
-  border:1px solid var(--line-strong);background:rgba(9,14,23,.97);box-shadow:0 18px 40px -22px #000;
+  border:1px solid var(--line-strong);background:var(--overlay);box-shadow:0 18px 40px -22px #000;
   font-size:11.5px;color:var(--muted);line-height:1.6;animation:crFade .1s ease}
-.cr-tooltip b{color:#dcebfa;font-family:var(--mono);font-size:11.5px}
-.cr-tooltip .cr-tt-head{font-size:11.5px;color:#dcebfa;font-weight:620;margin-bottom:3px;display:flex;justify-content:space-between;gap:10px}
+.cr-tooltip b{color:var(--text);font-family:var(--mono);font-size:11.5px}
+.cr-tooltip .cr-tt-head{font-size:11.5px;color:var(--text);font-weight:620;margin-bottom:3px;display:flex;justify-content:space-between;gap:10px}
 .cr-tt-row{display:flex;justify-content:space-between;gap:12px}
-.cr-tt-row span:last-child{color:#cfe0f2;font-family:var(--mono)}
+.cr-tt-row span:last-child{color:var(--muted);font-family:var(--mono)}
 
 /* ---------- queue ---------- */
 .cr-queue{display:flex;flex-direction:column;gap:9px}
 .cr-queue-card{position:relative;border:1px solid var(--line);border-radius:12px;padding:10px 12px 11px;cursor:pointer;
-  background:linear-gradient(180deg,rgba(255,255,255,.028),rgba(255,255,255,.004)),#0c1421;
+  background:linear-gradient(180deg,var(--surface),var(--surface-faint)),var(--code-bg);
   transition:border-color .16s ease,transform .16s ease,background .16s ease}
 .cr-queue-card:hover{border-color:rgba(53,224,200,.36);transform:translateY(-1px)}
 .cr-queue-card.is-running{border-color:rgba(53,224,200,.3);background:
-  linear-gradient(180deg,rgba(53,224,200,.075),rgba(53,224,200,.006)),#0b1522;
+  linear-gradient(180deg,rgba(53,224,200,.075),rgba(53,224,200,.006)),var(--code-bg);
   box-shadow:inset 0 1px 0 rgba(53,224,200,.16)}
 .cr-queue-card.is-queued{border-style:dashed;border-color:rgba(255,255,255,.13)}
 .cr-queue-top{display:flex;align-items:center;gap:7px;min-width:0}
 .cr-queue-title{font-size:13.5px;font-weight:640;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cr-queue-meta{display:flex;align-items:center;gap:8px;margin-top:4px;font-size:12px;color:#c6d2e1;font-weight:500;font-family:var(--mono)}
-.cr-progress{height:5px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden;margin-top:8px}
+.cr-queue-meta{display:flex;align-items:center;gap:8px;margin-top:4px;font-size:12px;color:var(--muted);font-weight:500;font-family:var(--mono)}
+.cr-progress{height:5px;border-radius:99px;background:var(--surface-3);overflow:hidden;margin-top:8px}
 .cr-progress-fill{height:100%;border-radius:99px;position:relative;overflow:hidden;
-  background:linear-gradient(90deg,#1f9785,#35e0c8);transition:width .7s cubic-bezier(.2,.8,.2,1)}
+  background:linear-gradient(90deg,var(--accent-deep),var(--accent));transition:width .7s cubic-bezier(.2,.8,.2,1)}
 .cr-progress-fill::after{content:'';position:absolute;inset:0;opacity:.55;
   background:linear-gradient(90deg,transparent,rgba(255,255,255,.65),transparent);animation:crFlow 1.9s linear infinite}
 .cr-queue-foot{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:11px;color:var(--muted)}
-.cr-act{display:flex;flex-direction:column;gap:3px;margin-top:8px;padding-top:7px;border-top:1px dashed rgba(255,255,255,.08)}
-.cr-act-line{display:flex;gap:7px;font-size:12px;color:#dde6f2;line-height:1.5}
+.cr-act{display:flex;flex-direction:column;gap:3px;margin-top:8px;padding-top:7px;border-top:1px dashed var(--hover)}
+.cr-act-line{display:flex;gap:7px;font-size:12px;color:var(--muted);line-height:1.5}
 .cr-act-ts{font-family:var(--mono);color:var(--faint);flex:0 0 auto;font-size:11px;padding-top:1px}
 .cr-act-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
@@ -802,23 +820,23 @@ window.__ModuleLoader__.load({
 .cr-list{display:flex;flex-direction:column;gap:2px}
 .cr-row{display:grid;align-items:center;gap:10px;padding:8px 9px;border-radius:9px;border:1px solid transparent;
   cursor:pointer;transition:background .14s ease,border-color .14s ease;min-width:0}
-.cr-row:hover{background:rgba(255,255,255,.038);border-color:rgba(255,255,255,.06)}
+.cr-row:hover{background:var(--surface-2);border-color:var(--surface-3)}
 .cr-row.is-flash{animation:crFlash 1.8s ease}
 .cr-row-title{font-size:12.5px;font-weight:620;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.5}
-.cr-row-sub{font-size:12px;color:#c6d2e1;margin-top:3px;font-weight:500;display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden;white-space:nowrap}
+.cr-row-sub{font-size:12px;color:var(--muted);margin-top:3px;font-weight:500;display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden;white-space:nowrap}
 .cr-row-sub .cr-mono{font-size:10.5px}
 .cr-row-num{font-family:var(--mono);font-size:11.5px;color:var(--muted);text-align:right}
 .cr-empty{padding:26px 14px;text-align:center;color:var(--faint);font-size:13.5px;display:flex;flex-direction:column;align-items:center;gap:8px}
 .cr-empty-icon{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:var(--faint);
-  border:1px dashed rgba(255,255,255,.14);background:rgba(255,255,255,.02)}
+  border:1px dashed rgba(255,255,255,.14);background:var(--surface-soft)}
 
 /* ---------- activity timeline ---------- */
 .cr-timeline{position:relative;display:flex;flex-direction:column;gap:0;padding-left:4px}
-.cr-tl-item{position:relative;display:flex;gap:10px;padding:6px 0 6px 14px;border-left:1px solid rgba(255,255,255,.08)}
+.cr-tl-item{position:relative;display:flex;gap:10px;padding:6px 0 6px 14px;border-left:1px solid var(--hover)}
 .cr-tl-item:first-child{border-left-color:rgba(53,224,200,.3)}
-.cr-tl-dot{position:absolute;left:-3.5px;top:12px;width:6px;height:6px;border-radius:50%;background:var(--muted);box-shadow:0 0 0 3px #0d1420}
+.cr-tl-dot{position:absolute;left:-3.5px;top:12px;width:6px;height:6px;border-radius:50%;background:var(--muted);box-shadow:0 0 0 3px var(--panel)}
 .cr-tl-body{min-width:0;display:flex;flex-direction:column;gap:2px}
-.cr-tl-text{font-size:12px;color:#b9c9db;line-height:1.45}
+.cr-tl-text{font-size:12px;color:var(--muted);line-height:1.45}
 .cr-tl-meta{font-size:11.5px;color:var(--faint);font-family:var(--mono);display:flex;gap:7px;align-items:center}
 .cr-tl-item.is-new .cr-tl-text{animation:crFlashText 2.2s ease}
 .cr-tl-item.is-new .cr-tl-dot{background:var(--accent);box-shadow:0 0 0 3px rgba(53,224,200,.16)}
@@ -826,7 +844,7 @@ window.__ModuleLoader__.load({
 /* ---------- projects ---------- */
 .cr-projects{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 .cr-project{position:relative;border:1px solid var(--line);border-radius:13px;padding:12px 13px;display:flex;flex-direction:column;background:
-  linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.004)),#0c1320;cursor:pointer;min-width:0;
+  linear-gradient(180deg,var(--surface),var(--surface-faint)),var(--code-bg);cursor:pointer;min-width:0;
   transition:border-color .16s ease,transform .16s ease}
 .cr-project:hover{border-color:rgba(53,224,200,.34);transform:translateY(-1px)}
 .cr-project.is-active{border-color:rgba(53,224,200,.5);box-shadow:inset 0 0 0 1px rgba(53,224,200,.16),0 18px 40px -30px rgba(53,224,200,.6)}
@@ -835,7 +853,7 @@ window.__ModuleLoader__.load({
 .cr-project-meta{display:flex;flex-wrap:nowrap;gap:5px;margin-top:8px;overflow:hidden}
 .cr-mini-label{display:flex;align-items:center;justify-content:space-between;margin-top:9px;font-size:10.5px;color:var(--faint)}
 .cr-mini-heat{display:grid;grid-auto-flow:column;grid-template-rows:repeat(2,5px);grid-auto-columns:5px;gap:2px;margin-top:5px;justify-content:start}
-.cr-mini-cell{width:5px;height:5px;border-radius:1px;background:#151f2b;border:1px solid rgba(255,255,255,.04)}
+.cr-mini-cell{width:5px;height:5px;border-radius:1px;background:var(--panel-2);border:1px solid var(--surface-2)}
 .cr-project-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;padding-top:8px;
   border-top:1px solid var(--line);font-size:10.5px;color:var(--faint);font-family:var(--mono)}
 
@@ -849,39 +867,39 @@ window.__ModuleLoader__.load({
 .cr-detail-title{font-size:17px;font-weight:680;letter-spacing:.2px;line-height:1.35;margin:6px 0 0}
 .cr-chips{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:9px}
 .cr-chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:7px;border:1px solid var(--line);
-  background:rgba(255,255,255,.028);font-size:11px;color:var(--muted);white-space:nowrap}
-.cr-chip b{color:#cfe0f2;font-family:var(--mono);font-size:11px;font-weight:600}
+  background:var(--surface);font-size:11px;color:var(--muted);white-space:nowrap}
+.cr-chip b{color:var(--muted);font-family:var(--mono);font-size:11px;font-weight:600}
 .cr-stages{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
-.cr-stage{position:relative;border:1px solid var(--line);border-radius:9px;padding:7px 8px 8px;background:rgba(255,255,255,.018);min-width:0}
+.cr-stage{position:relative;border:1px solid var(--line);border-radius:9px;padding:7px 8px 8px;background:var(--surface-soft);min-width:0}
 .cr-stage.is-done{border-color:rgba(61,220,151,.28);background:rgba(61,220,151,.055)}
 .cr-stage.is-running{border-color:rgba(53,224,200,.42);background:rgba(53,224,200,.075);box-shadow:inset 0 0 14px rgba(53,224,200,.08)}
 .cr-stage.is-failed{border-color:rgba(255,93,108,.38);background:rgba(255,93,108,.07)}
 .cr-stage.is-skipped{opacity:.5;border-style:dashed}
 .cr-stage-top{display:flex;align-items:center;gap:5px;font-size:10.5px;color:var(--muted)}
-.cr-stage-label{font-size:11.5px;font-weight:620;color:#cfe0f2;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cr-stage-label{font-size:11.5px;font-weight:620;color:var(--muted);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cr-stage-detail{font-size:10px;color:var(--faint);margin-top:2px;font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cr-finding{position:relative;border:1px solid var(--line);border-radius:12px;background:
-  linear-gradient(180deg,rgba(255,255,255,.024),rgba(255,255,255,.003)),#0c1320;overflow:hidden}
-.cr-finding::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--sev,#6ea8fe);opacity:.85}
+  linear-gradient(180deg,rgba(255,255,255,.024),rgba(255,255,255,.003)),var(--code-bg);overflow:hidden}
+.cr-finding::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--sev,var(--low));opacity:.85}
 .cr-finding-head{display:flex;align-items:flex-start;gap:8px;padding:10px 12px 6px 13px;flex-wrap:wrap}
-.cr-finding-title{font-size:13.5px;font-weight:640;line-height:1.45;min-width:0;flex:1 1 240px;color:#eaf3ff}
-.cr-finding-file{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11px;color:#8fb3d9;
+.cr-finding-title{font-size:13.5px;font-weight:640;line-height:1.45;min-width:0;flex:1 1 240px;color:var(--text)}
+.cr-finding-file{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11px;color:var(--accent-2-soft);
   background:rgba(110,168,254,.09);border:1px solid rgba(110,168,254,.18);border-radius:5px;padding:2px 6px;margin-top:6px}
-.cr-finding-body{padding:2px 13px 12px 13px;color:#9db0c9;font-size:12.5px;line-height:1.68}
+.cr-finding-body{padding:2px 13px 12px 13px;color:var(--muted);font-size:12.5px;line-height:1.68}
 .cr-finding-tools{display:flex;align-items:center;gap:7px;margin-left:auto}
-.cr-diff{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:9px;background:#0a1018}
+.cr-diff{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:9px;background:var(--code-bg)}
 .cr-diff-pane{min-width:0;display:flex;flex-direction:column}
 .cr-diff-pane + .cr-diff-pane{border-left:1px solid var(--line)}
 .cr-diff-pane.is-new{background:linear-gradient(180deg,rgba(53,224,200,.045),rgba(53,224,200,.008))}
 .cr-diff-pane.is-old{background:linear-gradient(180deg,rgba(255,93,108,.045),rgba(255,93,108,.006))}
 .cr-diff-label{display:flex;align-items:center;gap:6px;padding:5px 9px;font-size:10.5px;letter-spacing:.5px;color:var(--muted);
-  border-bottom:1px solid var(--line);background:rgba(255,255,255,.025);font-weight:640}
-.cr-diff-pane.is-new .cr-diff-label{color:#7ff0cd}
-.cr-diff-pane.is-old .cr-diff-label{color:#ff9aa4}
+  border-bottom:1px solid var(--line);background:var(--surface-soft);font-weight:640}
+.cr-diff-pane.is-new .cr-diff-label{color:var(--accent-soft)}
+.cr-diff-pane.is-old .cr-diff-label{color:var(--danger-soft)}
 .cr-code{max-height:216px;overflow:auto;padding:6px 0}
 .cr-code-line{display:flex;gap:8px;padding:0 8px;font-family:var(--mono);font-size:11.5px;line-height:1.72;white-space:pre}
-.cr-code-no{flex:0 0 26px;text-align:right;color:#c2cee0;user-select:none}
-.cr-code-tx{white-space:pre-wrap;word-break:break-word;color:#cfe0f2}
+.cr-code-no{flex:0 0 26px;text-align:right;color:var(--muted);user-select:none}
+.cr-code-tx{white-space:pre-wrap;word-break:break-word;color:var(--muted)}
 .cr-diff-pane.is-old .cr-code-line{background:rgba(255,93,108,.05)}
 .cr-diff-pane.is-new .cr-code-line{background:rgba(53,224,200,.05)}
 .cr-thinking{margin-top:8px;font-size:11.5px;color:var(--muted);border-left:2px solid rgba(110,168,254,.35);
@@ -891,125 +909,125 @@ window.__ModuleLoader__.load({
 .cr-search{position:relative;display:flex;align-items:center;min-width:170px}
 .cr-search .cr-icon{position:absolute;left:9px;color:var(--faint);pointer-events:none}
 .cr-search input{width:100%;height:30px;padding:0 10px 0 29px;border-radius:9px;border:1px solid var(--line);
-  background:rgba(255,255,255,.03);color:var(--text);font-size:12.5px;outline:none}
-.cr-search input::placeholder,.cr-input::placeholder,textarea.cr-input::placeholder{color:#c6d2e1;opacity:1}
+  background:var(--surface);color:var(--text);font-size:12.5px;outline:none}
+.cr-search input::placeholder,.cr-input::placeholder,textarea.cr-input::placeholder{color:var(--muted);opacity:1}
 .cr-search input:focus{border-color:rgba(53,224,200,.42);box-shadow:0 0 0 3px rgba(53,224,200,.1)}
 .cr-select{position:relative;display:inline-flex;align-items:center}
 .cr-select select{appearance:none;-webkit-appearance:none;height:32px;padding:0 26px 0 10px;border-radius:9px;
-  border:1px solid var(--line);background:rgba(255,255,255,.03);color:#dce7f5;font-size:13px;font-weight:600;outline:none;cursor:pointer}
+  border:1px solid var(--line);background:var(--surface);color:var(--text);font-size:13px;font-weight:600;outline:none;cursor:pointer}
 .cr-select select:focus{border-color:rgba(53,224,200,.42)}
-.cr-select select option{background:#0d1420}
+.cr-select select option{background:var(--panel)}
 .cr-select .cr-icon{position:absolute;right:7px;color:var(--muted);pointer-events:none}
 .cr-field{display:flex;flex-direction:column;gap:5px;min-width:0}
-.cr-label{font-size:13px;color:#f0f5fc;font-weight:660;letter-spacing:.15px;display:flex;align-items:center;gap:5px}
-.cr-input{height:32px;border-radius:8px;border:1px solid var(--line);background:rgba(255,255,255,.03);
+.cr-label{font-size:13px;color:var(--text);font-weight:660;letter-spacing:.15px;display:flex;align-items:center;gap:5px}
+.cr-input{height:32px;border-radius:8px;border:1px solid var(--line);background:var(--surface);
   color:var(--text);font-size:13px;padding:0 10px;outline:none;width:100%}
 .cr-input:focus{border-color:rgba(53,224,200,.42);box-shadow:0 0 0 3px rgba(53,224,200,.1)}
 textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;resize:vertical;font-family:inherit}
-.cr-hint{font-size:12.5px;color:#c9d4e4;line-height:1.6}
+.cr-hint{font-size:12.5px;color:var(--muted);line-height:1.6}
 .cr-kv{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11.5px}
 .cr-kv + .cr-kv{margin-top:6px}
-.cr-kv span:first-child{color:#d4deeb;flex:0 0 auto}
-.cr-kv span:last-child{color:#cfe0f2;font-family:var(--mono);font-size:11px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cr-side-block{border-top:1px dashed rgba(255,255,255,.08);padding-top:10px;margin-top:10px}
-.cr-side-title{font-size:11.5px;color:#c9d4e4;letter-spacing:.6px;font-weight:640;margin-bottom:7px}
-.cr-file-row{display:flex;align-items:center;gap:7px;font-size:11.5px;color:#a9bdd4;padding:3px 0;min-width:0}
+.cr-kv span:first-child{color:var(--text);flex:0 0 auto}
+.cr-kv span:last-child{color:var(--muted);font-family:var(--mono);font-size:11px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cr-side-block{border-top:1px dashed var(--hover);padding-top:10px;margin-top:10px}
+.cr-side-title{font-size:11.5px;color:var(--muted);letter-spacing:.6px;font-weight:640;margin-bottom:7px}
+.cr-file-row{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--muted);padding:3px 0;min-width:0}
 .cr-file-row .cr-mono{font-size:10.5px;color:var(--faint);margin-left:auto}
-.cr-coverage{height:6px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden;display:flex}
+.cr-coverage{height:6px;border-radius:99px;background:var(--surface-3);overflow:hidden;display:flex}
 .cr-coverage i{display:block;height:100%}
 
 /* ---------- graphs ---------- */
 .cr-graph-wrap{display:grid;grid-template-columns:minmax(0,1fr) 322px;gap:14px;align-items:start}
 .cr-graph-canvas{position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden;
-  background:radial-gradient(circle at 50% 40%,rgba(53,224,200,.055),transparent 62%),#0a111b;
+  background:radial-gradient(circle at 50% 40%,rgba(53,224,200,.055),transparent 62%),var(--code-bg);
   height:500px;min-height:400px}
 .cr-graph-svg{width:100%;height:100%;display:block}
 .cr-graph-node{cursor:pointer}
-.cr-graph-node text{font-size:12px;font-weight:600;fill:#cfe0f2;pointer-events:none}
-.cr-graph-node .cr-graph-sub{font-size:10.5px;fill:#c6d2e1;font-weight:500;font-family:ui-monospace,Menlo,monospace}
+.cr-graph-node text{font-size:12px;font-weight:600;fill:var(--muted);pointer-events:none}
+.cr-graph-node .cr-graph-sub{font-size:10.5px;fill:var(--muted);font-weight:500;font-family:ui-monospace,Menlo,monospace}
 .cr-graph-node circle.cr-node-halo{opacity:.16;transition:opacity .16s ease}
 .cr-graph-node:hover circle.cr-node-halo{opacity:.34}
 .cr-graph-node.is-dim{opacity:.32}
 .cr-graph-node.is-active circle.cr-node-core{stroke:#fff;stroke-width:1.6}
 .cr-graph-canvas-legend{position:absolute;left:14px;bottom:12px;display:flex;align-items:center;gap:12px;
-  font-size:10.5px;color:var(--faint);background:rgba(8,12,20,.66);border:1px solid var(--line);
+  font-size:10.5px;color:var(--faint);background:var(--hud-soft);border:1px solid var(--line);
   border-radius:8px;padding:5px 9px;backdrop-filter:blur(8px)}
 .cr-graph-canvas-legend i{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px}
 .cr-graph-canvas-hint{position:absolute;right:14px;bottom:12px;font-size:10.5px;color:var(--faint);
-  background:rgba(8,12,20,.6);border:1px solid var(--line);border-radius:7px;padding:4px 8px}
+  background:var(--hud-soft);border:1px solid var(--line);border-radius:7px;padding:4px 8px}
 .cr-metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.cr-metric{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:rgba(255,255,255,.02)}
+.cr-metric{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:var(--surface-soft)}
 .cr-metric-k{font-size:10.5px;color:var(--faint);letter-spacing:.3px}
 .cr-metric-v{font-family:var(--mono);font-size:18px;font-weight:660;margin-top:2px}
 .cr-metric-v small{font-size:10.5px;color:var(--faint);font-weight:500;margin-left:2px}
 .cr-table{width:100%;border-collapse:collapse;font-size:11.5px}
 .cr-table th{text-align:left;font-weight:620;color:var(--faint);font-size:10.5px;letter-spacing:.4px;
   padding:0 8px 6px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
-.cr-table td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.045);color:#b9c9db;white-space:nowrap}
-.cr-table tr:hover td{background:rgba(255,255,255,.03)}
-.cr-table td.cr-num{font-family:var(--mono);text-align:right;color:#cfe0f2}
+.cr-table td{padding:6px 8px;border-bottom:1px solid var(--surface-2);color:var(--muted);white-space:nowrap}
+.cr-table tr:hover td{background:var(--surface)}
+.cr-table td.cr-num{font-family:var(--mono);text-align:right;color:var(--muted)}
 .cr-table tr.is-active td{background:rgba(53,224,200,.07)}
-.cr-risk-bar{height:4px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden;min-width:44px}
+.cr-risk-bar{height:4px;border-radius:99px;background:var(--surface-3);overflow:hidden;min-width:44px}
 .cr-risk-bar i{display:block;height:100%;border-radius:99px}
 
 /* ---------- modal / drawer / toast ---------- */
 .cr-overlay{position:fixed;inset:0;z-index:60;background:rgba(4,7,12,.66);backdrop-filter:blur(7px);
   display:flex;align-items:center;justify-content:center;padding:26px;animation:crFade .16s ease}
 .cr-modal{width:min(940px,100%);max-height:min(86vh,880px);display:flex;flex-direction:column;border-radius:18px;
-  border:1px solid rgba(255,255,255,.11);background:linear-gradient(180deg,#0f1725,#0a111b);
-  box-shadow:0 46px 110px -40px #000,inset 0 1px 0 rgba(255,255,255,.05);overflow:hidden;animation:crPop .18s cubic-bezier(.2,.9,.3,1)}
+  border:1px solid rgba(255,255,255,.11);background:linear-gradient(180deg,var(--code-bg),var(--code-bg));
+  box-shadow:0 46px 110px -40px #000,inset 0 1px 0 var(--surface-2);overflow:hidden;animation:crPop .18s cubic-bezier(.2,.9,.3,1)}
 .cr-modal-head{display:flex;align-items:flex-start;gap:12px;padding:16px 20px 13px;border-bottom:1px solid var(--line)}
 .cr-modal-title{font-size:15px;font-weight:680;letter-spacing:.2px}
-.cr-modal-sub{font-size:13px;color:#d4deeb;margin-top:3px;font-weight:500}
+.cr-modal-sub{font-size:13px;color:var(--text);margin-top:3px;font-weight:500}
 .cr-modal-body{padding:16px 20px 6px;overflow:auto;min-height:0}
-.cr-modal-foot{display:flex;align-items:center;gap:10px;padding:13px 20px;border-top:1px solid var(--line);background:rgba(8,12,20,.5)}
+.cr-modal-foot{display:flex;align-items:center;gap:10px;padding:13px 20px;border-top:1px solid var(--line);background:var(--hud-soft)}
 .cr-modal-foot .cr-grow{flex:1 1 auto}
 .cr-type-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
 .cr-type-card{position:relative;text-align:left;border:1px solid var(--line);border-radius:11px;padding:10px 11px;
-  background:rgba(255,255,255,.02);cursor:pointer;transition:border-color .15s ease,background .15s ease;min-width:0;
+  background:var(--surface-soft);cursor:pointer;transition:border-color .15s ease,background .15s ease;min-width:0;
   /* buttons do not inherit text color: without this the card title falls back to the UA button color (near-black in the DSH shell) */
   color:var(--text);font-family:inherit}
 .cr-type-card:hover{border-color:rgba(255,255,255,.18)}
 .cr-type-card.is-active{border-color:rgba(53,224,200,.5);background:rgba(53,224,200,.08);
   box-shadow:inset 0 0 0 1px rgba(53,224,200,.12)}
 .cr-type-card-top{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:660}
-.cr-type-card-hint{font-size:12px;color:#d4deeb;margin-top:4px;font-family:var(--mono);line-height:1.55;font-weight:500}
-.cr-type-card-badge{position:absolute;right:8px;top:8px;font-size:9.5px;color:#8ff3e4;background:rgba(53,224,200,.14);
+.cr-type-card-hint{font-size:12px;color:var(--text);margin-top:4px;font-family:var(--mono);line-height:1.55;font-weight:500}
+.cr-type-card-badge{position:absolute;right:8px;top:8px;font-size:9.5px;color:var(--accent-soft);background:rgba(53,224,200,.14);
   border:1px solid rgba(53,224,200,.3);border-radius:4px;padding:1px 4px}
 .cr-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
 .cr-form-grid.cols-3{grid-template-columns:1fr 1fr 1fr}
 .cr-checks{display:flex;flex-wrap:wrap;gap:5px}
 .cr-check{display:inline-flex;align-items:center;gap:5px;height:25px;padding:0 8px;border-radius:7px;border:1px solid var(--line);
-  background:rgba(255,255,255,.025);font-size:11.5px;color:var(--muted);cursor:pointer;font-family:var(--mono)}
-.cr-check.is-on{border-color:rgba(53,224,200,.42);background:rgba(53,224,200,.1);color:#8ff3e4}
+  background:var(--surface-soft);font-size:11.5px;color:var(--muted);cursor:pointer;font-family:var(--mono)}
+.cr-check.is-on{border-color:rgba(53,224,200,.42);background:rgba(53,224,200,.1);color:var(--accent-soft)}
 .cr-drawer{position:fixed;top:0;right:0;bottom:0;width:min(430px,94vw);z-index:70;display:flex;flex-direction:column;
-  background:linear-gradient(180deg,#0f1725,#0a1018);border-left:1px solid var(--line-strong);
+  background:linear-gradient(180deg,var(--code-bg),var(--code-bg));border-left:1px solid var(--line-strong);
   box-shadow:-50px 0 100px -50px #000;animation:crSlide .2s cubic-bezier(.2,.9,.3,1)}
 .cr-drawer-head{display:flex;align-items:center;gap:10px;padding:15px 18px;border-bottom:1px solid var(--line)}
 .cr-drawer-body{flex:1 1 auto;overflow:auto;padding:14px 18px 26px}
-.cr-drawer-section + .cr-drawer-section{margin-top:16px;border-top:1px dashed rgba(255,255,255,.08);padding-top:13px}
+.cr-drawer-section + .cr-drawer-section{margin-top:16px;border-top:1px dashed var(--hover);padding-top:13px}
 .cr-drawer-title{font-size:11.5px;font-weight:640;letter-spacing:.6px;color:var(--muted);display:flex;align-items:center;gap:6px}
 .cr-toasts{position:fixed;right:18px;bottom:18px;z-index:100;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
 .cr-toast{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:10px;border:1px solid var(--line-strong);
-  background:rgba(11,17,27,.97);box-shadow:0 20px 46px -24px #000;font-size:12.5px;color:#dcebfa;
+  background:var(--overlay-soft);box-shadow:0 20px 46px -24px #000;font-size:12.5px;color:var(--text);
   animation:crToast .2s cubic-bezier(.2,.9,.3,1)}
 .cr-toast.is-success{border-color:rgba(61,220,151,.34)}
 .cr-toast.is-error{border-color:rgba(255,93,108,.38)}
 .cr-toast.is-warn{border-color:rgba(255,209,102,.32)}
 
 /* ---------- skeleton / states ---------- */
-.cr-skeleton{position:relative;overflow:hidden;background:rgba(255,255,255,.045);border-radius:7px}
+.cr-skeleton{position:relative;overflow:hidden;background:var(--surface-2);border-radius:7px}
 .cr-skeleton::after{content:'';position:absolute;inset:0;
-  background:linear-gradient(90deg,transparent,rgba(255,255,255,.075),transparent);animation:crShimmer 1.5s ease-in-out infinite}
+  background:linear-gradient(90deg,transparent,var(--hover),transparent);animation:crShimmer 1.5s ease-in-out infinite}
 .cr-booting{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;color:var(--muted)}
 .cr-boot-mark{width:62px;height:62px;border-radius:18px;display:grid;place-items:center;color:var(--accent);
   border:1px solid rgba(53,224,200,.3);background:rgba(53,224,200,.07);animation:crBreathe 2.4s ease-in-out infinite}
 .cr-boot-text{font-size:13px;letter-spacing:.4px}
 .cr-boot-sub{font-size:11px;color:var(--faint);font-family:var(--mono);letter-spacing:1.2px}
 .cr-banner{display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:10px;font-size:12px;line-height:1.5;
-  border:1px solid rgba(255,209,102,.3);background:rgba(255,209,102,.07);color:#ffe0a1}
-.cr-banner.is-error{border-color:rgba(255,93,108,.34);background:rgba(255,93,108,.08);color:#ffb3ba}
-.cr-banner.is-info{border-color:rgba(110,168,254,.28);background:rgba(110,168,254,.07);color:#b8d0f5}
+  border:1px solid rgba(255,209,102,.3);background:rgba(255,209,102,.07);color:var(--warn-soft)}
+.cr-banner.is-error{border-color:rgba(255,93,108,.34);background:rgba(255,93,108,.08);color:var(--danger-soft)}
+.cr-banner.is-info{border-color:rgba(110,168,254,.28);background:rgba(110,168,254,.07);color:var(--accent-2-soft)}
 .cr-bullet{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.8;flex:0 0 auto}
 
 @keyframes crPulse{0%{box-shadow:0 0 0 0 rgba(53,224,200,.55)}70%{box-shadow:0 0 0 7px rgba(53,224,200,0)}100%{box-shadow:0 0 0 0 rgba(53,224,200,0)}}
@@ -1022,7 +1040,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
 @keyframes crShimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
 @keyframes crBreathe{0%,100%{box-shadow:0 0 0 0 rgba(53,224,200,.16)}50%{box-shadow:0 0 34px 4px rgba(53,224,200,.14)}}
 @keyframes crFlash{0%{background:rgba(53,224,200,.16)}100%{background:transparent}}
-@keyframes crFlashText{0%{color:#8ff3e4}100%{color:#b9c9db}}
+@keyframes crFlashText{0%{color:var(--accent-soft)}100%{color:var(--muted)}}
 `;
 
     // =====================================================================
@@ -1050,7 +1068,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         className: ['cr-badge', spec.className || ''].filter(Boolean).join(' '),
         style: {
           color,
-          background: spec.soft || 'rgba(255,255,255,.05)',
+          background: spec.soft || 'var(--surface-2)',
           borderColor: spec.border || 'transparent',
           ...spec.style,
         },
@@ -1072,7 +1090,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
 
     function StatusPill(props) {
       const status = str(props && props.status, 'queued');
-      const meta = STATUS_META[status] || { label: status, color: '#9aa8bd' };
+      const meta = STATUS_META[status] || { label: status, color: 'var(--muted)' };
       return h('span', { className: 'cr-status', style: { color: meta.color, borderColor: `${meta.color}33`, background: `${meta.color}12` } },
         h('i', { className: 'cr-dot', style: { background: meta.color } }),
         h('span', null, meta.label));
@@ -1093,9 +1111,9 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
     function CategoryBadge(props) {
       const category = str(props && props.category, 'other');
       return h(Badge, {
-        color: '#a9bdd4',
-        soft: 'rgba(255,255,255,.05)',
-        border: 'rgba(255,255,255,.08)',
+        color: 'var(--muted)',
+        soft: 'var(--surface-2)',
+        border: 'var(--hover)',
         children: CATEGORY_LABEL[category] || category,
       });
     }
@@ -1106,7 +1124,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       const height = num(props && props.height, 5);
       if (!total) {
         return h('div', { className: 'cr-sev-bar', style: { height, width: props && props.width } },
-          h('i', { style: { width: '100%', background: 'rgba(255,255,255,.08)' } }));
+          h('i', { style: { width: '100%', background: 'var(--hover)' } }));
       }
       return h('div', { className: 'cr-sev-bar', style: { height, width: props && props.width } },
         SEVERITIES.map((key) => {
@@ -1197,7 +1215,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       const alpha = ['', '3d', '66', '99', 'ff'];
       return h('div', { className: 'cr-mini-heat', 'data-mini-heat': '1' }, padded.map((value, index) => {
         const level = heatLevel(value, max);
-        const color = level === 0 ? '#151f2b' : `#35e0c8${alpha[level]}`;
+        const color = level === 0 ? 'var(--panel-2)' : `var(--accent)${alpha[level]}`;
         return h('i', {
           key: index,
           className: 'cr-mini-cell',
@@ -1469,7 +1487,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
               onClick: () => state.parent && void load(state.parent),
             }, h(Icon, { name: 'arrowLeft', size: 11 }), '上一级'),
             h('input', { className: 'cr-input', value: state.path, readOnly: true, style: { flex: '1 1 auto', minWidth: 0 } })),
-          state.error ? h('div', { key: 'error', className: 'cr-hint', style: { color: '#ff9aa4', marginBottom: 8 } }, state.error) : null,
+          state.error ? h('div', { key: 'error', className: 'cr-hint', style: { color: 'var(--danger-soft)', marginBottom: 8 } }, state.error) : null,
           h('div', {
             key: 'list',
             style: { maxHeight: 268, overflow: 'auto', border: '1px solid var(--line)', borderRadius: 10, background: 'rgba(255,255,255,.015)' },
@@ -1483,8 +1501,8 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
                 'data-dir-entry': str(entry.name),
                 style: {
                   display: 'flex', width: '100%', alignItems: 'center', gap: 8, padding: '7px 10px',
-                  border: 0, borderBottom: '1px solid rgba(255,255,255,.05)', background: 'transparent',
-                  color: entry.hidden ? '#9db0c9' : 'var(--text)', cursor: 'pointer', fontSize: 12, textAlign: 'left',
+                  border: 0, borderBottom: '1px solid var(--surface-2)', background: 'transparent',
+                  color: entry.hidden ? 'var(--muted)' : 'var(--text)', cursor: 'pointer', fontSize: 12, textAlign: 'left',
                 },
                 onClick: () => void load(entry.path),
               }, h(Icon, { name: 'folder', size: 12 }), h('span', { className: 'cr-ellipsis' }, str(entry.name))))
@@ -1555,7 +1573,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
                 onClick: () => setBrowseOpen(true), disabled: busy,
                 title: '浏览文件夹并选择',
               }, h(Icon, { name: 'folder', size: 12 }), '浏览文件夹…'))),
-          error ? h('div', { key: 'error', className: 'cr-hint', style: { color: '#ff9aa4', marginTop: 8 } }, error) : null,
+          error ? h('div', { key: 'error', className: 'cr-hint', style: { color: 'var(--danger-soft)', marginTop: 8 } }, error) : null,
         ],
       }), h(FolderBrowserDialog, {
         open: browseOpen,
@@ -1664,32 +1682,32 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       const cards = [
         {
           statKey: 'reviews-total', label: 'Review 总数', icon: 'shield', value: num(overview.reviewsTotal),
-          unit: '次', color: '#35e0c8', spark: reviewSpark,
+          unit: '次', color: 'var(--accent)', spark: reviewSpark,
           note: `成功率 ${Math.round(num(overview.successRate) * 100)}%`,
         },
         {
           statKey: 'reviews-7d', label: '近 7 天', icon: 'zap', value: num(overview.reviews7d),
-          unit: '次', color: '#6ea8fe', spark: reviewSpark.slice(-7),
+          unit: '次', color: 'var(--low)', spark: reviewSpark.slice(-7),
           note: `今日 ${num(overview.reviewsToday)} 次`,
         },
         {
           statKey: 'running', label: '进行中', icon: 'clock', value: running + queued,
-          unit: '个', color: '#ffd166', live: running > 0,
+          unit: '个', color: 'var(--medium)', live: running > 0,
           note: `运行 ${running} · 排队 ${queued}`,
         },
         {
           statKey: 'findings', label: '问题总数', icon: 'alert', value: num(findings.total),
-          unit: '条', color: '#ff5d6c', sevBar: true, sevCounts: findings,
+          unit: '条', color: 'var(--danger)', sevBar: true, sevCounts: findings,
           note: `严重 ${num(findings.critical)} · 高危 ${num(findings.high)}`,
         },
         {
           statKey: 'files', label: '已审文件', icon: 'file', value: num(overview.filesReviewed),
-          unit: '个', color: '#b9a6ff',
+          unit: '个', color: 'var(--purple)',
           note: `累计 ${fmtCompact(num(overview.tokens))} tokens`,
         },
         {
           statKey: 'modules', label: '覆盖模块', icon: 'graph', value: num(overview.modulesCovered),
-          unit: '个', color: '#3ddc97',
+          unit: '个', color: 'var(--success)',
           note: `${num(overview.projectsCount)} 个项目`,
         },
       ];
@@ -1736,7 +1754,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             onChange: setMetric,
             options: Object.keys(HEAT_METRIC_LABEL).map((key) => ({ value: key, label: HEAT_METRIC_LABEL[key] })),
           }),
-          h(Badge, { key: 'total', color: '#8ff3e4', soft: 'rgba(53,224,200,.1)', border: 'rgba(53,224,200,.22)', children: `${fmtInt(totalsByMetric[metric].value)} ${HEAT_METRIC_LABEL[metric]}` }),
+          h(Badge, { key: 'total', color: 'var(--accent-soft)', soft: 'rgba(53,224,200,.1)', border: 'rgba(53,224,200,.22)', children: `${fmtInt(totalsByMetric[metric].value)} ${HEAT_METRIC_LABEL[metric]}` }),
         ],
         children: h('div', { className: 'cr-heat' },
           h('div', { className: 'cr-heat-main' },
@@ -1800,8 +1818,8 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       },
       h('div', { className: 'cr-queue-top' },
         running
-          ? h('span', { className: 'cr-dot is-live', style: { background: '#35e0c8' } })
-          : h('span', { className: 'cr-dot', style: { background: '#9aa8bd' } }),
+          ? h('span', { className: 'cr-dot is-live', style: { background: 'var(--accent)' } })
+          : h('span', { className: 'cr-dot', style: { background: 'var(--muted)' } }),
         h('span', { className: 'cr-queue-title' }, str(job.title, '评审任务')),
         h(TypeBadge, { type: job.type }),
         h('span', { style: { marginLeft: 'auto' } }, h(StatusPill, { status }))),
@@ -1812,16 +1830,16 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         h('span', null, '·'),
         h('span', null, running ? `已耗时 ${fmtMs(elapsedOf(job, now))}` : `已等待 ${fmtMs(elapsedOf(job, now))}`)),
       h('div', { style: { marginTop: 8 } },
-        h(ProgressBar, { value: progress, color: running ? undefined : 'linear-gradient(90deg,#6c7f9a,#93a3b8)' })),
+        h(ProgressBar, { value: progress, color: running ? undefined : 'linear-gradient(90deg,var(--faint),var(--muted))' })),
       h('div', { className: 'cr-queue-foot' },
-        h(Icon, { name: running ? 'play' : 'clock', size: 11, style: { color: running ? '#35e0c8' : 'var(--faint)' } }),
-        h('span', { style: { color: running ? '#8ff3e4' : 'var(--muted)', fontWeight: 620 } },
+        h(Icon, { name: running ? 'play' : 'clock', size: 11, style: { color: running ? 'var(--accent)' : 'var(--faint)' } }),
+        h('span', { style: { color: running ? 'var(--accent-soft)' : 'var(--muted)', fontWeight: 620 } },
           running ? str(currentStage.label || STAGE_LABEL[str(currentStage.key)], str(STAGE_LABEL[str(obj(job.stage).key)], '准备中')) : '等待空闲槽位'),
         h('span', { style: { marginLeft: 'auto', fontFamily: 'var(--mono)' } },
           `${Math.round(progress * 100)}% · 阶段 ${num(obj(job.stage).index)}/${num(obj(job.stage).total, 6)}`)),
       activity.length ? h('div', { className: 'cr-act' }, activity.map((event, index) => h('div', { key: index, className: 'cr-act-line' },
         h('span', { className: 'cr-act-ts' }, fmtClock(event.ts)),
-        h('span', { className: 'cr-act-text', style: { color: str(event.level) === 'error' ? '#ff9aa4' : str(event.level) === 'success' ? '#7ff0cd' : undefined } }, str(event.text))))) : null);
+        h('span', { className: 'cr-act-text', style: { color: str(event.level) === 'error' ? 'var(--danger-soft)' : str(event.level) === 'success' ? 'var(--accent-soft)' : undefined } }, str(event.text))))) : null);
     }
 
     function LiveQueue(props) {
@@ -1842,7 +1860,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       });
     }
 
-    const KIND_COLOR = { review: '#35e0c8', finding: '#ff8f4d', project: '#b9a6ff', system: '#6ea8fe' };
+    const KIND_COLOR = { review: 'var(--accent)', finding: 'var(--high)', project: 'var(--purple)', system: 'var(--low)' };
 
     function RecentReviews(props) {
       const snapshot = obj(props && props.snapshot);
@@ -1873,8 +1891,8 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
                 h('span', null, '·'),
                 h('span', { className: 'cr-mono' }, `${num(obj(job.counts).filesReviewed)} 文件`),
                 h('span', null, '·'),
-                h('span', { style: { color: num(counts.critical) ? '#ff9aa4' : num(counts.high) ? '#ff8f4d' : 'var(--faint)' } }, `${num(obj(job.counts).findings)} 问题`),
-                counts.critical ? h('i', { style: { width: 5, height: 5, borderRadius: '50%', background: '#ff5d6c', flex: '0 0 auto' } }) : null,
+                h('span', { style: { color: num(counts.critical) ? 'var(--danger-soft)' : num(counts.high) ? 'var(--high)' : 'var(--faint)' } }, `${num(obj(job.counts).findings)} 问题`),
+                counts.critical ? h('i', { style: { width: 5, height: 5, borderRadius: '50%', background: 'var(--danger)', flex: '0 0 auto' } }) : null,
                 h('span', { style: { marginLeft: 'auto', color: 'var(--faint)', fontFamily: 'var(--mono)', fontSize: 9.5 } }, fmtAgo(job.finishedAt || job.createdAt, now)))),
             h('span', { style: { display: 'flex', justifyContent: 'flex-end' } }, h(StatusPill, { status: job.status })));
           }))
@@ -1909,12 +1927,12 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             h('div', { className: 'cr-project-name' },
               h('span', { style: { color: active ? 'var(--accent)' : 'var(--faint)' } }, h(Icon, { name: 'folder', size: 12 })),
               h('span', { className: 'cr-ellipsis' }, str(entry.name || project.name)),
-              health === 'dirty' ? h('span', { className: 'cr-dot', style: { background: '#ffd166' }, title: '有未提交改动' }) : null),
+              health === 'dirty' ? h('span', { className: 'cr-dot', style: { background: 'var(--medium)' }, title: '有未提交改动' }) : null),
             h('div', { className: 'cr-project-path' }, str(project.branch, '—'), ' · ', str(project.head, '').slice(0, 7)),
             h(MiniHeatmap, { spark: heatmap.spark, days: heatmap.days && heatmap.days.length <= 120 ? heatmap.days : null }),
             h('div', { className: 'cr-project-foot', style: { marginTop: 6, paddingTop: 6 } },
               h('span', null, fmtAgo(entry.lastAt, Date.now())),
-              h('span', { style: { color: num(entry.findings) > 0 ? '#ffb3ba' : 'var(--faint)' } }, `${num(entry.findings)} 问题`)));
+              h('span', { style: { color: num(entry.findings) > 0 ? 'var(--danger-soft)' : 'var(--faint)' } }, `${num(entry.findings)} 问题`)));
           }))
           : h(EmptyState, { icon: 'folder', text: '未发现项目', hint: '在设置里配置项目根目录' }),
       });
@@ -1943,10 +1961,10 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
 
     function riskColor(risk) {
       const key = str(risk, 'low');
-      if (key === 'critical') return '#ff5d6c';
-      if (key === 'high') return '#ff8f4d';
-      if (key === 'medium') return '#ffd166';
-      return '#6ea8fe';
+      if (key === 'critical') return 'var(--danger)';
+      if (key === 'high') return 'var(--high)';
+      if (key === 'medium') return 'var(--medium)';
+      return 'var(--low)';
     }
 
     function HotModules(props) {
@@ -2006,7 +2024,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         bodyClassName: 'cr-card-body is-tight',
         children: events.length
           ? h('div', { className: 'cr-timeline' }, events.map((event) => {
-            const color = KIND_COLOR[str(event.kind)] || '#6ea8fe';
+            const color = KIND_COLOR[str(event.kind)] || 'var(--low)';
             const level = str(event.level);
             return h('div', {
               key: str(event.id),
@@ -2014,7 +2032,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
               onClick: () => event.jobId && props && props.onOpenJob && props.onOpenJob(event.jobId),
               style: { cursor: event.jobId ? 'pointer' : 'default' },
             },
-            h('i', { className: 'cr-tl-dot', style: { background: level === 'error' ? '#ff5d6c' : level === 'warn' ? '#ffd166' : level === 'success' ? '#3ddc97' : color } }),
+            h('i', { className: 'cr-tl-dot', style: { background: level === 'error' ? 'var(--danger)' : level === 'warn' ? 'var(--medium)' : level === 'success' ? 'var(--success)' : color } }),
             h('div', { className: 'cr-tl-body' },
               h('div', { className: 'cr-tl-text' }, str(event.text)),
               h('div', { className: 'cr-tl-meta' },
@@ -2169,7 +2187,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             h('span', null, '·'),
             h('span', null, `${num(obj(job.counts).filesReviewed)}/${num(obj(job.counts).filesPlanned)} 文件`),
             h('span', null, '·'),
-            num(job.resolvedCount) > 0 ? h('span', { style: { color: '#3ddc97' } }, `已修复 ${num(job.resolvedCount)}`) : null,
+            num(job.resolvedCount) > 0 ? h('span', { style: { color: 'var(--success)' } }, `已修复 ${num(job.resolvedCount)}`) : null,
             num(job.resolvedCount) > 0 ? h('span', null, '·') : null,
             h('span', { className: 'cr-mono' }, fmtAgo(job.createdAt, spec.now)),
             h('span', null, '·'),
@@ -2188,7 +2206,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
           title: '展开最近动态',
         }, h(Icon, { name: 'chevronRight', size: 13 }))),
         spec.expanded ? h('div', {
-          style: { margin: '0 8px 6px', padding: '9px 11px', borderRadius: 10, border: '1px solid var(--line)', background: 'rgba(255,255,255,.022)' },
+          style: { margin: '0 8px 6px', padding: '9px 11px', borderRadius: 10, border: '1px solid var(--line)', background: 'var(--surface-soft)' },
         },
         h('div', { style: { display: 'flex', gap: 10, alignItems: 'flex-start' } },
           h('div', { style: { flex: '1 1 auto', minWidth: 0 } },
@@ -2216,9 +2234,9 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
                 key: str(stage.key),
                 className: 'cr-badge',
                 style: {
-                  color: str(stage.status) === 'failed' ? '#ff9aa4' : str(stage.status) === 'running' ? '#8ff3e4' : str(stage.status) === 'skipped' ? 'var(--faint)' : '#9db0c9',
+                  color: str(stage.status) === 'failed' ? 'var(--danger-soft)' : str(stage.status) === 'running' ? 'var(--accent-soft)' : str(stage.status) === 'skipped' ? 'var(--faint)' : 'var(--muted)',
                   background: 'rgba(255,255,255,.035)',
-                  borderColor: 'rgba(255,255,255,.07)',
+                  borderColor: 'var(--surface-3)',
                   fontFamily: 'var(--mono)',
                 },
               }, str(stage.label || STAGE_LABEL[str(stage.key)]))))))) : null);
@@ -2304,8 +2322,8 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         h('div', { className: 'cr-finding-head' },
           h(SevBadge, { severity }),
           h(CategoryBadge, { category: finding.category }),
-          str(finding.source) === 'structural' ? h(Badge, { color: '#b9a6ff', soft: 'rgba(185,166,255,.1)', border: 'rgba(185,166,255,.24)', children: 'structural' }) : null,
-          fixed ? h(Badge, { color: '#3ddc97', soft: 'rgba(61,220,151,.12)', border: 'rgba(61,220,151,.3)', children: '已修复' }) : null,
+          str(finding.source) === 'structural' ? h(Badge, { color: 'var(--purple)', soft: 'rgba(185,166,255,.1)', border: 'rgba(185,166,255,.24)', children: 'structural' }) : null,
+          fixed ? h(Badge, { color: 'var(--success)', soft: 'rgba(61,220,151,.12)', border: 'rgba(61,220,151,.3)', children: '已修复' }) : null,
           h('div', { className: 'cr-finding-tools' },
             h('button', {
               type: 'button',
@@ -2510,7 +2528,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       if (loaded.error && !loaded.detail) {
         return h('div', { className: 'cr-stack' },
           h('button', { type: 'button', className: 'cr-back', onClick: spec.onBack }, h(Icon, { name: 'arrowLeft', size: 13 }), '返回'),
-          h(Card, { title: '加载失败', icon: 'alert', iconColor: '#ff5d6c' },
+          h(Card, { title: '加载失败', icon: 'alert', iconColor: 'var(--danger)' },
             h('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
               h(Banner, { tone: 'error' }, loaded.error),
               h('div', null, h('button', { type: 'button', className: 'cr-btn is-primary', onClick: () => spec.onReload && spec.onReload() },
@@ -2529,8 +2547,8 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
           h('h1', { className: 'cr-detail-title' }, str(job.title, '评审详情')),
           counts.total
             ? h('div', { style: { display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' } },
-              h('span', { className: 'cr-chip', style: { color: '#8ff3e4', borderColor: 'rgba(61,220,151,.26)' } }, `已修复 ${fixedCount} / ${counts.total}`),
-              openCount ? h('span', { className: 'cr-chip', style: { color: '#ffd98a' } }, `未修复 ${openCount}`) : h('span', { className: 'cr-chip', style: { color: '#8ff3e4' } }, '全部已修复'))
+              h('span', { className: 'cr-chip', style: { color: 'var(--accent-soft)', borderColor: 'rgba(61,220,151,.26)' } }, `已修复 ${fixedCount} / ${counts.total}`),
+              openCount ? h('span', { className: 'cr-chip', style: { color: 'var(--warn-soft)' } }, `未修复 ${openCount}`) : h('span', { className: 'cr-chip', style: { color: 'var(--accent-soft)' } }, '全部已修复'))
             : null,
           h('div', { className: 'cr-chips' },
             h('span', { className: 'cr-chip' }, h(Icon, { name: 'folder', size: 11 }), h('span', null, str(job.projectName, '—'))),
@@ -2548,7 +2566,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         bodyClassName: 'cr-card-body',
         children: h('div', { className: 'cr-stages' }, (stageList.length ? stageList : [{ key: 'resolve', label: '解析项目', status: 'pending' }]).map((stage) => {
           const stageStatus = str(stage.status, 'pending');
-          const tone = stageStatus === 'done' ? '#3ddc97' : stageStatus === 'running' ? '#35e0c8' : stageStatus === 'failed' ? '#ff5d6c' : 'var(--faint)';
+          const tone = stageStatus === 'done' ? 'var(--success)' : stageStatus === 'running' ? 'var(--accent)' : stageStatus === 'failed' ? 'var(--danger)' : 'var(--faint)';
           const stageDetail = str(stage.detail) || (stageStatus === 'running'
             ? `${Math.round(num(job.progress) * 100)}%`
             : stageStatus === 'done'
@@ -2573,13 +2591,13 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         subtitle: ENGINE_SUBTITLE[engineKey(job.engine)],
         bodyClassName: 'cr-card-body',
         children: h('div', null,
-          h('div', { style: { fontSize: 14, fontWeight: 660, lineHeight: 1.5, color: '#eaf3ff' } }, str(obj(job.summary).headline, '暂无摘要')),
+          h('div', { style: { fontSize: 14, fontWeight: 660, lineHeight: 1.5, color: 'var(--text)' } }, str(obj(job.summary).headline, '暂无摘要')),
           str(obj(job.summary).projectSummary)
-            ? h('div', { style: { marginTop: 8, fontSize: 11.5, color: '#9db0c9', lineHeight: 1.7 } }, str(obj(job.summary).projectSummary))
+            ? h('div', { style: { marginTop: 8, fontSize: 11.5, color: 'var(--muted)', lineHeight: 1.7 } }, str(obj(job.summary).projectSummary))
             : null,
           arr(obj(job.summary).notes).length
             ? h('div', { style: { marginTop: 9, display: 'flex', flexDirection: 'column', gap: 4 } },
-              arr(obj(job.summary).notes).map((note, index) => h('div', { key: index, style: { fontSize: 10.5, color: '#ffe0a1', display: 'flex', gap: 6 } },
+              arr(obj(job.summary).notes).map((note, index) => h('div', { key: index, style: { fontSize: 10.5, color: 'var(--warn-soft)', display: 'flex', gap: 6 } },
                 h('span', null, '·'), h('span', null, str(note)))))
             : null,
           str(job.error) || obj(job.error).message
@@ -2662,7 +2680,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
                 return h('div', { key: severity, style: { display: 'flex', alignItems: 'center', gap: 7 } },
                   h('i', { style: { width: 6, height: 6, borderRadius: '50%', background: meta.color } }),
                   h('span', { style: { fontSize: 10.5, color: 'var(--muted)', width: 32 } }, meta.label),
-                  h('div', { style: { flex: 1, height: 4, borderRadius: 99, background: 'rgba(255,255,255,.06)', overflow: 'hidden' } },
+                  h('div', { style: { flex: 1, height: 4, borderRadius: 99, background: 'var(--surface-3)', overflow: 'hidden' } },
                     h('i', { style: { display: 'block', height: '100%', width: `${percent(value, Math.max(1, counts.total))}%`, background: meta.color } })),
                   h('span', { style: { fontFamily: 'var(--mono)', fontSize: 10, width: 20, textAlign: 'right', color: meta.color } }, value));
               }))),
@@ -2674,7 +2692,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
           bodyClassName: 'cr-card-body',
           children: files.length
             ? h('div', null, files.slice(0, 6).map((file) => h('div', { key: str(file.path), className: 'cr-file-row' },
-              h('i', { style: { width: 5, height: 5, borderRadius: '50%', background: SEV_META[str(file.severityMax, 'low')] ? SEV_META[str(file.severityMax, 'low')].color : '#6ea8fe' } }),
+              h('i', { style: { width: 5, height: 5, borderRadius: '50%', background: SEV_META[str(file.severityMax, 'low')] ? SEV_META[str(file.severityMax, 'low')].color : 'var(--low)' } }),
               h('span', { className: 'cr-ellipsis', style: { fontSize: 10 } }, str(file.path)),
               h('span', { className: 'cr-mono' }, num(file.findings)))))
             : h(EmptyState, { icon: 'file', text: '没有文件明细' }),
@@ -2686,11 +2704,11 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
           children: h('div', null,
             h('div', { style: { display: 'flex', justifyContent: 'space-between', fontSize: 10.5, color: 'var(--muted)' } },
               h('span', null, '已评审文件'),
-              h('span', { className: 'cr-mono', style: { color: '#cfe0f2' } }, `${reviewed} / ${reviewable || reviewed}`)),
+              h('span', { className: 'cr-mono', style: { color: 'var(--muted)' } }, `${reviewed} / ${reviewable || reviewed}`)),
             h('div', { className: 'cr-coverage', style: { marginTop: 6 } },
-              h('i', { style: { width: `${percent(reviewed, Math.max(1, reviewable || reviewed))}%`, background: 'linear-gradient(90deg,#1f9785,#35e0c8)' } }),
-              coverageFailed ? h('i', { style: { width: `${percent(coverageFailed, Math.max(1, reviewable || reviewed))}%`, background: '#ff5d6c' } }) : null,
-              waived ? h('i', { style: { width: `${percent(waived, Math.max(1, reviewable || reviewed))}%`, background: '#3b4b63' } }) : null),
+              h('i', { style: { width: `${percent(reviewed, Math.max(1, reviewable || reviewed))}%`, background: 'linear-gradient(90deg,var(--accent-deep),var(--accent))' } }),
+              coverageFailed ? h('i', { style: { width: `${percent(coverageFailed, Math.max(1, reviewable || reviewed))}%`, background: 'var(--danger)' } }) : null,
+              waived ? h('i', { style: { width: `${percent(waived, Math.max(1, reviewable || reviewed))}%`, background: 'var(--line-strong)' } }) : null),
             h('div', { style: { marginTop: 10 } },
               h(KV, { label: '可评审', value: reviewable }),
               h(KV, { label: '已评审', value: reviewed }),
@@ -2741,7 +2759,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             job.fixAt
               ? h('span', {
                 className: 'cr-chip',
-                style: { color: job.fixVerifiedAt ? '#3ddc97' : '#ffd166' },
+                style: { color: job.fixVerifiedAt ? 'var(--success)' : 'var(--medium)' },
                 title: job.fixVerifiedAt ? '已校验修复状态' : '该报告创建过修复会话，打开后会自动重新校验',
               }, verify.id ? '修复校验中…' : job.fixVerifiedAt ? '修复已校验' : '待校验修复')
               : null,
@@ -2806,18 +2824,18 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             h('div', { className: 'cr-project-name' },
               h(Icon, { name: 'folder', size: 13, style: { color: active ? 'var(--accent)' : 'var(--faint)' } }),
               h('span', { className: 'cr-ellipsis' }, str(project.name)),
-              project.dirty ? h(Badge, { color: '#ffd166', soft: 'rgba(255,209,102,.1)', border: 'rgba(255,209,102,.26)', children: 'dirty' }) : null,
-              active ? h(Badge, { color: '#8ff3e4', soft: 'rgba(53,224,200,.1)', border: 'rgba(53,224,200,.26)', children: '当前' }) : null),
+              project.dirty ? h(Badge, { color: 'var(--medium)', soft: 'rgba(255,209,102,.1)', border: 'rgba(255,209,102,.26)', children: 'dirty' }) : null,
+              active ? h(Badge, { color: 'var(--accent-soft)', soft: 'rgba(53,224,200,.1)', border: 'rgba(53,224,200,.26)', children: '当前' }) : null),
             h('div', { className: 'cr-project-path' }, str(project.path)),
             h('div', { className: 'cr-project-meta' },
-              h(Badge, { color: '#9db0c9', soft: 'rgba(255,255,255,.05)', border: 'rgba(255,255,255,.08)', children: str(project.branch, '—') }),
-              h(Badge, { color: '#9db0c9', soft: 'rgba(255,255,255,.05)', border: 'rgba(255,255,255,.08)', children: str(project.head, '').slice(0, 7) || '—' }),
-              h(Badge, { color: '#b9a6ff', soft: 'rgba(185,166,255,.09)', border: 'rgba(185,166,255,.2)', children: str(project.language, '—') }),
-              h(Badge, { color: '#9db0c9', soft: 'rgba(255,255,255,.05)', border: 'rgba(255,255,255,.08)', children: `${num(project.moduleCount)} 模块` }),
-              h(Badge, { color: '#9db0c9', soft: 'rgba(255,255,255,.05)', border: 'rgba(255,255,255,.08)', children: `${fmtCompact(num(project.loc))} LOC` })),
+              h(Badge, { color: 'var(--muted)', soft: 'var(--surface-2)', border: 'var(--hover)', children: str(project.branch, '—') }),
+              h(Badge, { color: 'var(--muted)', soft: 'var(--surface-2)', border: 'var(--hover)', children: str(project.head, '').slice(0, 7) || '—' }),
+              h(Badge, { color: 'var(--purple)', soft: 'rgba(185,166,255,.09)', border: 'rgba(185,166,255,.2)', children: str(project.language, '—') }),
+              h(Badge, { color: 'var(--muted)', soft: 'var(--surface-2)', border: 'var(--hover)', children: `${num(project.moduleCount)} 模块` }),
+              h(Badge, { color: 'var(--muted)', soft: 'var(--surface-2)', border: 'var(--hover)', children: `${fmtCompact(num(project.loc))} LOC` })),
             h('div', { className: 'cr-mini-label' },
               h('span', null, '近 90 天提交'),
-              h('span', { className: 'cr-mono', style: { color: num(findings.total) > 0 ? '#ffb3ba' : 'var(--faint)' } }, `${num(findings.total)} 问题`)),
+              h('span', { className: 'cr-mono', style: { color: num(findings.total) > 0 ? 'var(--danger-soft)' : 'var(--faint)' } }, `${num(findings.total)} 问题`)),
             h(MiniHeatmap, { spark: heatmap.spark }),
             h('div', { className: 'cr-project-foot' },
               h('span', null, `最近评审 ${fmtAgo(project.lastReviewAt, Date.now())}`),
@@ -2840,7 +2858,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
                 h('tbody', null, modules.map((module) => {
                   const color = riskColor(module.risk);
                   return h('tr', { key: str(module.id || module.name) },
-                    h('td', { style: { fontFamily: 'var(--mono)', color: '#cfe0f2' } }, str(module.name)),
+                    h('td', { style: { fontFamily: 'var(--mono)', color: 'var(--muted)' } }, str(module.name)),
                     h('td', { className: 'cr-num' }, num(module.files)),
                     h('td', { className: 'cr-num' }, fmtCompact(num(module.loc))),
                     h('td', null, h('div', { style: { display: 'flex', alignItems: 'center', gap: 6 } },
@@ -2848,7 +2866,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
                         h('i', { style: { width: `${percent(num(module.loc), maxLoc)}%`, background: color } })),
                       h('span', { style: { color, fontSize: 9.5, fontFamily: 'var(--mono)' } }, str(module.risk)))),
                     h('td', { className: 'cr-num' }, num(module.reviewCount)),
-                    h('td', { className: 'cr-num', style: { color: num(obj(module.findings).total) ? '#ffb3ba' : undefined } }, num(obj(module.findings).total)));
+                    h('td', { className: 'cr-num', style: { color: num(obj(module.findings).total) ? 'var(--danger-soft)' : undefined } }, num(obj(module.findings).total)));
                 })))
               : h(EmptyState, { icon: 'graph', text: '没有模块明细' }),
           }),
@@ -2941,7 +2959,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             h('marker', { id: 'cr-arrow', viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 5, markerHeight: 5, orient: 'auto-start-reverse' },
               h('path', { d: 'M0 0 L10 5 L0 10 z', fill: 'rgba(140,170,205,.6)' })),
             h('marker', { id: 'cr-arrow-hot', viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 5, markerHeight: 5, orient: 'auto-start-reverse' },
-              h('path', { d: 'M0 0 L10 5 L0 10 z', fill: '#ff8f4d' })),
+              h('path', { d: 'M0 0 L10 5 L0 10 z', fill: 'var(--high)' })),
             h('radialGradient', { id: 'cr-node-grad' },
               h('stop', { offset: '0%', stopColor: 'rgba(53,224,200,.2)' }),
               h('stop', { offset: '100%', stopColor: 'rgba(10,17,27,0)' }))),
@@ -2965,7 +2983,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             return h('line', {
               key: `edge-${index}`,
               x1, y1, x2, y2,
-              stroke: inCycle ? '#ff5d6c' : hot ? '#ff8f4d' : 'rgba(120,150,185,.34)',
+              stroke: inCycle ? 'var(--danger)' : hot ? 'var(--high)' : 'rgba(120,150,185,.34)',
               strokeWidth: hot ? 1.6 : 1,
               strokeDasharray: inCycle ? '5 3' : undefined,
               markerEnd: hot ? 'url(#cr-arrow-hot)' : 'url(#cr-arrow)',
@@ -2987,12 +3005,12 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
               onMouseLeave: () => setHover(null),
             },
             h('circle', { className: 'cr-node-halo', cx: entry.x, cy: entry.y, r: entry.radius * 1.85, fill: color }),
-            isCycle ? h('circle', { cx: entry.x, cy: entry.y, r: entry.radius + 6, fill: 'none', stroke: '#ff5d6c', strokeWidth: 1, strokeDasharray: '3 4', opacity: 0.6 }) : null,
-            h('circle', { className: 'cr-node-core', cx: entry.x, cy: entry.y, r: entry.radius, fill: '#0b1220', stroke: color, strokeWidth: 1.7 }),
+            isCycle ? h('circle', { cx: entry.x, cy: entry.y, r: entry.radius + 6, fill: 'none', stroke: 'var(--danger)', strokeWidth: 1, strokeDasharray: '3 4', opacity: 0.6 }) : null,
+            h('circle', { className: 'cr-node-core', cx: entry.x, cy: entry.y, r: entry.radius, fill: 'var(--code-bg)', stroke: color, strokeWidth: 1.7 }),
             h('circle', { cx: entry.x, cy: entry.y, r: Math.max(2.5, entry.radius * 0.26), fill: color, opacity: 0.85 }),
             h('text', {
               x: entry.labelX, y: entry.labelY, textAnchor: entry.side,
-              style: { fill: '#eaf3ff', paintOrder: 'stroke', stroke: '#080c14', strokeWidth: 3.4, strokeLinejoin: 'round' },
+              style: { fill: 'var(--text)', paintOrder: 'stroke', stroke: 'var(--bg)', strokeWidth: 3.4, strokeLinejoin: 'round' },
             }, str(node.label || node.path).slice(0, 18)),
             h('text', { x: entry.labelX, y: entry.labelY + 12, textAnchor: entry.side, className: 'cr-graph-sub' },
               `${fmtCompact(num(node.loc))} LOC · ${num(node.files)} 文件`));
@@ -3065,7 +3083,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
           h('div', { style: { marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' } },
             selected ? h('button', { type: 'button', className: 'cr-btn is-sm', onClick: () => setSelected('') },
               h(Icon, { name: 'close', size: 11 }), '清除过滤') : null,
-            h(Badge, { color: '#8ff3e4', soft: 'rgba(53,224,200,.1)', border: 'rgba(53,224,200,.24)', children: `风险 ${metrics.cycles != null ? num(metrics.cycles) : cycles.length} 环` }))),
+            h(Badge, { color: 'var(--accent-soft)', soft: 'rgba(53,224,200,.1)', border: 'rgba(53,224,200,.24)', children: `风险 ${metrics.cycles != null ? num(metrics.cycles) : cycles.length} 环` }))),
         loaded.loading && !loaded.data ? h(PlaceholderCard, { title: '依赖图加载中…' }) : null,
         loaded.error && !loaded.data ? h(Banner, { tone: 'error' }, loaded.error) : null,
         h('div', { className: 'cr-graph-wrap' },
@@ -3079,7 +3097,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
               children: h('div', { className: 'cr-metric-grid' },
                 h('div', { className: 'cr-metric' }, h('div', { className: 'cr-metric-k' }, '模块数'), h('div', { className: 'cr-metric-v' }, nodes.length)),
                 h('div', { className: 'cr-metric' }, h('div', { className: 'cr-metric-k' }, '依赖边'), h('div', { className: 'cr-metric-v' }, edges.length)),
-                h('div', { className: 'cr-metric' }, h('div', { className: 'cr-metric-k' }, '循环依赖'), h('div', { className: 'cr-metric-v', style: { color: cycles.length ? '#ff8f4d' : '#3ddc97' } }, num(metrics.cycles, cycles.length))),
+                h('div', { className: 'cr-metric' }, h('div', { className: 'cr-metric-k' }, '循环依赖'), h('div', { className: 'cr-metric-v', style: { color: cycles.length ? 'var(--high)' : 'var(--success)' } }, num(metrics.cycles, cycles.length))),
                 h('div', { className: 'cr-metric' }, h('div', { className: 'cr-metric-k' }, '最大扇入'), h('div', { className: 'cr-metric-v' }, num(metrics.maxFanIn, 0))),
                 h('div', { className: 'cr-metric' }, h('div', { className: 'cr-metric-k' }, '最大扇出'), h('div', { className: 'cr-metric-v' }, num(metrics.maxFanOut, 0))),
                 h('div', { className: 'cr-metric' }, h('div', { className: 'cr-metric-k' }, '架构问题'), h('div', { className: 'cr-metric-v' }, findings.length)))}),
@@ -3103,7 +3121,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
                     onClick: () => setSelected(active ? '' : str(node.id)),
                     style: { cursor: 'pointer' },
                   },
-                  h('td', { style: { fontFamily: 'var(--mono)', color: active ? '#8ff3e4' : '#cfe0f2' } }, str(node.label || node.path).slice(0, 16)),
+                  h('td', { style: { fontFamily: 'var(--mono)', color: active ? 'var(--accent-soft)' : 'var(--muted)' } }, str(node.label || node.path).slice(0, 16)),
                   h('td', { className: 'cr-num' }, fmtCompact(num(node.loc))),
                   h('td', { className: 'cr-num' }, num(node.files)),
                   h('td', null, h('span', { style: { color: riskColor(node.risk), fontFamily: 'var(--mono)', fontSize: 9.5 } }, str(node.risk))));
@@ -3118,7 +3136,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
                   related.slice(0, 6).map((finding, index) => h('div', { key: str(finding.id) || `arch-f-${index}`, style: { display: 'flex', gap: 7, alignItems: 'flex-start' } },
                     h(SevBadge, { severity: finding.severity }),
                     h('div', { style: { minWidth: 0 } },
-                      h('div', { style: { fontSize: 10.5, color: '#cfe0f2', lineHeight: 1.45 } }, str(finding.title)),
+                      h('div', { style: { fontSize: 10.5, color: 'var(--muted)', lineHeight: 1.45 } }, str(finding.title)),
                       h('div', { style: { fontSize: 9.5, color: 'var(--faint)', fontFamily: 'var(--mono)', marginTop: 2 } }, `${str(finding.path)}:${num(finding.startLine)}`)))))
                 : h(EmptyState, { icon: 'alert', text: selected ? '该模块没有关联问题' : '没有架构问题' })}),
             ));
@@ -3129,10 +3147,10 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
     // =====================================================================
 
     const FLOW_KIND_META = {
-      entry: { label: '入口', color: '#35e0c8' },
-      service: { label: '服务', color: '#6ea8fe' },
-      data: { label: '数据', color: '#b9a6ff' },
-      external: { label: '外部', color: '#ff8f4d' },
+      entry: { label: '入口', color: 'var(--accent)' },
+      service: { label: '服务', color: 'var(--low)' },
+      data: { label: '数据', color: 'var(--purple)' },
+      external: { label: '外部', color: 'var(--high)' },
     };
 
     function computeFlowLayout(nodes, width, height) {
@@ -3199,7 +3217,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             h('marker', { id: 'cr-flow-arrow', viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 5, markerHeight: 5, orient: 'auto-start-reverse' },
               h('path', { d: 'M0 0 L10 5 L0 10 z', fill: 'rgba(140,170,205,.55)' })),
             h('marker', { id: 'cr-flow-arrow-hot', viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 5, markerHeight: 5, orient: 'auto-start-reverse' },
-              h('path', { d: 'M0 0 L10 5 L0 10 z', fill: '#ff8f4d' }))),
+              h('path', { d: 'M0 0 L10 5 L0 10 z', fill: 'var(--high)' }))),
           layout.columnTitles.map((column) => h('g', { key: column.key },
             h('text', { x: column.x, y: column.y, textAnchor: 'middle', style: { fill: column.color, fontSize: 11, fontWeight: 640, letterSpacing: 2 } }, column.label),
             h('line', { x1: column.x - 26, y1: column.y + 10, x2: column.x + 26, y2: column.y + 10, stroke: column.color, opacity: 0.35 }))),
@@ -3220,7 +3238,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
               key: `flow-${index}`,
               d: `M${x1},${y1} C${mid},${y1} ${mid},${y2} ${x2},${y2}`,
               fill: 'none',
-              stroke: hot ? '#ff8f4d' : kind === 'write' ? 'rgba(185,166,255,.5)' : 'rgba(120,150,185,.36)',
+              stroke: hot ? 'var(--high)' : kind === 'write' ? 'rgba(185,166,255,.5)' : 'rgba(120,150,185,.36)',
               strokeWidth: hot ? 1.8 : 1.2,
               strokeDasharray: kind === 'emit' || kind === 'http' ? '4 3' : undefined,
               markerEnd: hot ? 'url(#cr-flow-arrow-hot)' : 'url(#cr-flow-arrow)',
@@ -3242,14 +3260,14 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             h('rect', {
               x: entry.x - entry.w / 2, y: entry.y - entry.h / 2,
               width: entry.w, height: entry.h, rx: 12,
-              fill: isSelected ? 'rgba(53,224,200,.1)' : '#0b1220',
+              fill: isSelected ? 'rgba(53,224,200,.1)' : 'var(--code-bg)',
               stroke: isSelected ? kindMeta.color : `${kindMeta.color}55`,
               strokeWidth: isSelected ? 1.8 : 1.2,
             }),
             h('circle', { cx: entry.x - entry.w / 2 + 16, cy: entry.y, r: 3.4, fill: kindMeta.color }),
             h('text', {
               x: entry.x - entry.w / 2 + 28, y: entry.y - 3,
-              style: { fill: '#dcebfa', fontSize: 11.5, fontWeight: 620 },
+              style: { fill: 'var(--text)', fontSize: 11.5, fontWeight: 620 },
             }, str(entry.node.label).slice(0, 24)),
             h('text', {
               x: entry.x - entry.w / 2 + 28, y: entry.y + 13,
@@ -3345,13 +3363,13 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
                     style: {
                       border: `1px solid ${active ? 'rgba(53,224,200,.4)' : 'var(--line)'}`,
                       borderRadius: 10, padding: '8px 10px', cursor: 'pointer',
-                      background: active ? 'rgba(53,224,200,.06)' : 'rgba(255,255,255,.02)',
+                      background: active ? 'rgba(53,224,200,.06)' : 'var(--surface-soft)',
                     },
                     onClick: () => setSelected(active ? '' : str(flow.entry.id)),
                   },
                   h('div', { style: { display: 'flex', alignItems: 'center', gap: 6 } },
                     h('i', { className: 'cr-dot', style: { background: riskColor(flow.risk) } }),
-                    h('span', { style: { fontSize: 11, fontWeight: 620, color: '#dcebfa' } }, str(flow.entry.label)),
+                    h('span', { style: { fontSize: 11, fontWeight: 620, color: 'var(--text)' } }, str(flow.entry.label)),
                     h('span', { style: { marginLeft: 'auto', fontSize: 9, color: 'var(--faint)', fontFamily: 'var(--mono)' } }, str(flow.risk))),
                   h('div', { style: { fontSize: 9.5, color: 'var(--faint)', marginTop: 4, fontFamily: 'var(--mono)' } },
                     `${flow.firstHop.length} 服务 · ${num(flow.dataTargets.length)} 数据访问 · ${str(flow.entry.path, '')}`));
@@ -3367,7 +3385,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
                 ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: 7 } }, related.map((finding, index) => h('div', { key: str(finding.id) || `flow-f-${index}`, style: { display: 'flex', gap: 7, alignItems: 'flex-start' } },
                   h(SevBadge, { severity: finding.severity }),
                   h('div', { style: { minWidth: 0 } },
-                    h('div', { style: { fontSize: 10.5, color: '#cfe0f2', lineHeight: 1.45 } }, str(finding.title)),
+                    h('div', { style: { fontSize: 10.5, color: 'var(--muted)', lineHeight: 1.45 } }, str(finding.title)),
                     h('div', { style: { fontSize: 9.5, color: 'var(--faint)', fontFamily: 'var(--mono)', marginTop: 2 } }, `${str(finding.path)}:${num(finding.startLine)}`)))))
                 : h(EmptyState, { icon: 'alert', text: '没有信息流问题' }),
             })));
@@ -3625,12 +3643,12 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         }
       };
 
-      let ocrTone = '#3ddc97';
-      if (str(ocr.state) === 'missing') ocrTone = '#ff5d6c';
-      else if (str(ocr.state) === 'error' || str(ocr.state) === 'unconfigured') ocrTone = '#ffd166';
+      let ocrTone = 'var(--success)';
+      if (str(ocr.state) === 'missing') ocrTone = 'var(--danger)';
+      else if (str(ocr.state) === 'error' || str(ocr.state) === 'unconfigured') ocrTone = 'var(--medium)';
       const llmState = str(llm.state);
       const llmDelegate = llmState === 'delegate';
-      let llmTone = (llmState === 'configured' || llmDelegate) ? '#3ddc97' : llmState === 'error' ? '#ff5d6c' : '#ffd166';
+      let llmTone = (llmState === 'configured' || llmDelegate) ? 'var(--success)' : llmState === 'error' ? 'var(--danger)' : 'var(--medium)';
       const llmSourceLabel = { config: '配置文件', env: '环境变量', file: '~/.opencodereview/config.json', dsh: 'DSH 会话', none: '未配置' };
 
       return h(Drawer, {
@@ -3639,12 +3657,26 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         subtitle: `code-review · ${str(config.engineMode, 'auto')} 引擎`,
         onClose: spec.onClose,
         children: [
+          h('div', { key: 'theme', className: 'cr-drawer-section' },
+            h('div', { className: 'cr-drawer-title' }, h(Icon, { name: 'grid', size: 11 }), '主题'),
+            h('div', { style: { marginTop: 8 } },
+              h(Segmented, {
+                value: str(spec.themeSetting, 'follow'),
+                onChange: (value) => spec.onThemeChange && spec.onThemeChange(value),
+                options: [
+                  { value: 'follow', label: '跟随 DSH' },
+                  { value: 'dark', label: '深色' },
+                  { value: 'light', label: '浅色' },
+                ],
+              }),
+              h('div', { className: 'cr-hint', style: { marginTop: 6 } },
+                '浅色/深色只影响代码评审中心；默认跟随 DSH 外观设置。'))),
           h('div', { key: 'engine', className: 'cr-drawer-section' },
             h('div', { className: 'cr-drawer-title' }, h(Icon, { name: 'zap', size: 11 }), 'OCR 引擎'),
             h('div', { style: { marginTop: 8 } },
               h('div', { style: { display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 } },
                 h('i', { className: 'cr-dot', style: { background: ocrTone } }),
-                h('span', { style: { fontSize: 11.5, color: '#cfe0f2', fontWeight: 620 } },
+                h('span', { style: { fontSize: 11.5, color: 'var(--muted)', fontWeight: 620 } },
                   str(ocr.state) === 'ok' ? 'OCR 已就绪' : `OCR ${str(ocr.state, '未知')}`),
                 h('span', { className: 'cr-mono', style: { marginLeft: 'auto', fontSize: 10, color: 'var(--faint)' } }, str(ocr.version, config.ocrVersion))),
               h(KV, { label: '可执行文件', value: str(config.ocrBin || ocr.path) }),
@@ -3656,7 +3688,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             h('div', { style: { marginTop: 8 } },
               h('div', { style: { display: 'flex', alignItems: 'center', gap: 7, marginBottom: 8 } },
                 h('i', { className: 'cr-dot', style: { background: llmTone } }),
-                h('span', { style: { fontSize: 11.5, color: '#cfe0f2', fontWeight: 620 } },
+                h('span', { style: { fontSize: 11.5, color: 'var(--muted)', fontWeight: 620 } },
                   llmDelegate ? 'LLM 委托模式' : llmState === 'configured' ? 'LLM 已配置' : `LLM ${str(llm.state, '未知')}`),
                 h('span', { className: 'cr-mono', style: { marginLeft: 'auto', fontSize: 10, color: 'var(--faint)' } }, llmDelegate ? `dsh/${str(llm.model, config.llmModel || '当前模型')}` : `${str(llm.provider, '—')}/${str(llm.model, '—')}`)),
               h(KV, { label: '来源', value: str(llm.sourceLabel, llmSourceLabel[str(llm.source)] || str(llm.source)) }),
@@ -3670,7 +3702,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
                   onClick: testLlm,
                 }, h(Icon, { name: testing ? 'clock' : 'zap', size: 11 }), testing ? '测试中…' : '测试 LLM'),
                 testResult
-                  ? h('span', { style: { fontSize: 10, color: testResult.ok ? '#7ff0cd' : '#ff9aa4' } },
+                  ? h('span', { style: { fontSize: 10, color: testResult.ok ? 'var(--accent-soft)' : 'var(--danger-soft)' } },
                     testResult.ok ? `正常 · ${num(testResult.latencyMs)}ms` : errorText(testResult.error))
                   : h('span', { className: 'cr-hint' }, '调用一次最小请求验证连通性')),
               h('div', { className: 'cr-hint', style: { marginTop: 7, fontFamily: 'var(--mono)', fontSize: 9 } },
@@ -3700,7 +3732,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
                 value: config.hostVersion ? `v${str(config.hostVersion)}` : '未上报（旧版 Host）',
               }),
               (config.hostVersion && config.hostVersion !== PLUGIN_VERSION) || !config.hostVersion
-                ? h('div', { className: 'cr-hint', style: { color: '#ffb27a', marginTop: 6 } },
+                ? h('div', { className: 'cr-hint', style: { color: 'var(--warn-soft)', marginTop: 6 } },
                   '客户端与 Host 版本不一致：请完全退出并重新打开 DSH（仅刷新页面只会更新客户端）')
                 : null,
               h(KV, { label: 'OCR', value: str(config.ocrVersion, 'open-code-review') }),
@@ -3733,7 +3765,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       const tone = spec.tone || 'ok';
       const className = `cr-health-chip${tone === 'bad' ? ' is-bad' : tone === 'warn' ? ' is-warn' : ''}`;
       return h('div', { className, title: spec.title },
-        h('i', { className: 'cr-dot', style: { background: spec.dotColor || (tone === 'bad' ? '#ff5d6c' : tone === 'warn' ? '#ffd166' : '#3ddc97') } }),
+        h('i', { className: 'cr-dot', style: { background: spec.dotColor || (tone === 'bad' ? 'var(--danger)' : tone === 'warn' ? 'var(--medium)' : 'var(--success)') } }),
         h('span', null, spec.label),
         h('b', null, spec.value));
     }
@@ -3802,7 +3834,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             }))),
         h('div', { className: 'cr-hud-right' },
           h('div', { className: `cr-poll${link.ok ? '' : ' is-bad'}`, title: link.ok ? '轮询正常' : errorText(link.error) },
-            h('span', { className: `cr-dot${link.ok ? ' is-live' : ''}`, style: { background: link.ok ? '#35e0c8' : '#ff5d6c' } }),
+            h('span', { className: `cr-dot${link.ok ? ' is-live' : ''}`, style: { background: link.ok ? 'var(--accent)' : 'var(--danger)' } }),
             h('span', null, link.ok ? '轮询 ' : '降级 '),
             h('b', null, link.ok ? `${pollSeconds}s` : `${Math.max(1, Math.round(num(link.retryMs) / 1000))}s`)),
           h('div', { className: 'cr-vsep' }),
@@ -4035,6 +4067,53 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       }
     }
 
+    const THEME_STORAGE_KEY = 'dsh-code-review/theme';
+    const THEME_MODES = ['follow', 'dark', 'light'];
+
+    function readThemeSetting() {
+      try {
+        const value = localStorage.getItem(THEME_STORAGE_KEY);
+        return THEME_MODES.includes(value) ? value : 'follow';
+      } catch {
+        return 'follow';
+      }
+    }
+
+    /** Follow the DSH shell theme unless the user pinned dark/light here. */
+    function useCrTheme() {
+      const [setting, setSetting] = React.useState(readThemeSetting);
+      const [shellTheme, setShellTheme] = React.useState(() => {
+        try {
+          return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+        } catch {
+          return 'dark';
+        }
+      });
+      React.useEffect(() => {
+        let observer = null;
+        try {
+          observer = new MutationObserver(() => {
+            setShellTheme(document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
+          });
+          observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+        } catch {
+          observer = null;
+        }
+        return () => observer?.disconnect();
+      }, []);
+      const update = React.useCallback((next) => {
+        if (!THEME_MODES.includes(next)) return;
+        setSetting(next);
+        try {
+          localStorage.setItem(THEME_STORAGE_KEY, next);
+        } catch {
+          /* persistence is optional */
+        }
+      }, []);
+      const effective = setting === 'follow' ? shellTheme : setting;
+      return { setting, effective, update };
+    }
+
     function CodeReviewPage(props) {
       const spec = props || {};
       const initialView = str(spec.initialView, 'overview');
@@ -4053,6 +4132,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       const [projectOverride, setProjectOverride] = React.useState(null);
       const returnViewRef = React.useRef(baseView === 'detail' ? 'overview' : baseView);
       const [toasts, setToasts] = React.useState([]);
+      const theme = useCrTheme();
       const toastSeqRef = React.useRef(0);
       const toastTimersRef = React.useRef(new Set());
 
@@ -4239,7 +4319,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       }, [rpc, pushToast, refresh, detailId]);
 
       if (!snapshot) {
-        return h('div', { className: 'cr-app', 'data-view': 'loading', 'data-ready': '0' },
+        return h('div', { className: 'cr-app', 'data-cr-theme': theme.effective, 'data-view': 'loading', 'data-ready': '0' },
           h('style', null, css),
           h(LoadingDeck, { link, onRetry: polling.retryNow }));
       }
@@ -4247,7 +4327,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       const overview = obj(snapshot.overview);
 
       return h(ToastCtx.Provider, { value: pushToast },
-        h('div', { className: 'cr-app', 'data-view': view, 'data-ready': '1' },
+        h('div', { className: 'cr-app', 'data-cr-theme': theme.effective, 'data-view': view, 'data-ready': '1' },
           h('style', null, css),
           h(Hud, {
             snapshot,
@@ -4332,6 +4412,8 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
           settingsOpen ? h(SettingsDrawer, {
             snapshot,
             connection,
+            themeSetting: theme.setting,
+            onThemeChange: theme.update,
             onClose: () => setSettingsOpen(false),
           }) : null,
           h(ToastStack, { toasts }),

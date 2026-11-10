@@ -26,6 +26,7 @@ English | [简体中文](README.zh.md)
   recently reviewed projects, hotspot modules, severity/category distribution, coverage
 - **Project page / architecture dependency graph / data-flow swimlane diagram / new-review dialog / settings drawer**
 
+![Light theme](docs/screenshots/code-review-light.png)
 ![Review details](docs/screenshots/code-review-detail.png)
 ![Fixed markers and filtering](docs/screenshots/code-review-fixed.png)
 ![Project architecture graph](docs/screenshots/code-review-architecture.png)
