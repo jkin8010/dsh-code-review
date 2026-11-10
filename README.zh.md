@@ -180,6 +180,7 @@ plugins/dsh-code-review/        # 插件实现（Host/Client/安装包）
 tests/code-review/             # 自检（真实 git/ocr + 假 Cordis/LLM）与截图 harness
 docs/CODE-REVIEW-CONTRACT.zh.md   # 插件与前后端的字段/接口契约
 docs/CODE-REVIEW-DELIVERY.zh.md   # 交付、验收记录与已知限制
+docs/RELEASE-HISTORY.md        # 已清理 tag 的版本说明归档
 docs/screenshots/              # 界面截图
 ```
 

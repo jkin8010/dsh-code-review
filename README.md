@@ -180,6 +180,7 @@ plugins/dsh-code-review/        # plugin implementation (Host/Client/install pac
 tests/code-review/             # self-tests (real git/ocr + fake Cordis/LLM) and the screenshot harness
 docs/CODE-REVIEW-CONTRACT.md    # field/API contract between the plugin and the front/back end
 docs/CODE-REVIEW-DELIVERY.md    # delivery and acceptance records, plus known limitations
+docs/RELEASE-HISTORY.md        # archived notes for releases whose tags were cleaned up
 docs/screenshots/              # UI screenshots
 ```
 
