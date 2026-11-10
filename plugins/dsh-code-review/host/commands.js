@@ -1,5 +1,5 @@
 import { stat } from 'node:fs/promises';
-import { isAbsolute, resolve } from 'node:path';
+import { isAbsolute, relative, resolve } from 'node:path';
 import { errorText, nowIso, trimText } from './shared.js';
 import { createFixSessionForJob } from './fix.js';
 
@@ -21,7 +21,7 @@ const USAGE = `用法：/code-review <子命令> [@项目路径] [选项]
   commit <sha>                     单次提交
   range <from> <to>                分支对比（merge-base）
   architecture | arch              项目架构
-  module <路径[,路径]>             代码模块
+  module <路径[,路径]>             代码模块（也可用 --paths a,b）
   workflow | flow [链路名]         信息流 / 业务工作流
   fix [jobId]                      为最近一次（或指定）评审新建修复 Session
   list [数量]                      最近评审
@@ -33,6 +33,7 @@ const USAGE = `用法：/code-review <子命令> [@项目路径] [选项]
   --project <路径>      项目路径（等价于 @路径；相对当前会话目录）
   --effort <level>      low | medium | high
   --background <文本>   评审背景（帮助模型理解意图）
+  --paths <a,b>         模块路径（等价于 module 后的位置参数）
   --exclude <globs>     逗号分隔的排除规则
   --budget <n>          OCR 本次 token 预算（0=不限）
 
@@ -41,6 +42,7 @@ const USAGE = `用法：/code-review <子命令> [@项目路径] [选项]
   /code-review workflow --fix @test/
   /code-review architecture @/Users/me/project
   /code-review module plugins/dsh-code-review/host --fix
+  /code-review module --paths host,client --fix
   /code-review changes --effort high
   /code-review commit abc123
   /code-review range main feature/login
@@ -91,6 +93,7 @@ function parse(raw) {
     background: '',
     exclude: '',
     budget: 0,
+    paths: [],
   };
   let index = 0;
   while (index < tokens.length) {
@@ -122,7 +125,10 @@ function parse(raw) {
           index += 1;
         }
       }
-      if (flag === '--project' || flag === '--path') {
+      if (flag === '--paths') {
+        if (value === undefined) throw new Error('--paths 需要逗号分隔的模块路径');
+        args.paths.push(...String(value).split(',').map((item) => item.trim()).filter(Boolean));
+      } else if (flag === '--project' || flag === '--path') {
         if (!value) throw new Error(`${flag} 需要项目路径`);
         args.project = value;
         args.projectExplicit = true;
@@ -319,8 +325,25 @@ export function createCodeReviewCommand({
       scope.to = to;
     }
     if (type === 'module') {
-      const paths = (args.positional.join(',') || '').split(',').map((item) => item.trim()).filter(Boolean);
-      if (!paths.length) throw new Error('用法：/code-review module <路径[,路径]>');
+      let paths = [...args.paths, ...(args.positional.join(',') || '').split(',')]
+        .map((item) => item.trim().replace(/^['"]|['"]$/g, ''))
+        .filter(Boolean);
+      // `/code-review module @host` is a common shorthand: when the only
+      // argument is an @path that resolves inside the current project, treat it
+      // as the module path instead of the project.
+      if (!paths.length && args.project) {
+        const cwd = sessionCwd(invocation);
+        const target = resolveProject(args, invocation);
+        const rel = relative(cwd, target);
+        if (rel && !rel.startsWith('..') && !isAbsolute(rel)) {
+          paths = [rel.split('\\').join('/')];
+          args.project = '';
+          args.projectExplicit = false;
+        }
+      }
+      if (!paths.length) {
+        throw new Error('用法：/code-review module <路径[,路径]> [@项目路径]\n示例：/code-review module host,client --fix\n或：/code-review module --paths plugins/dsh-code-review/host');
+      }
       scope.paths = paths;
     }
     if (type === 'flow' && args.positional[0]) scope.flowName = args.positional[0];

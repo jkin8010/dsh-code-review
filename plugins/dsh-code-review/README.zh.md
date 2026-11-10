@@ -65,6 +65,7 @@ Agent 会启动真实评审（默认等待完成）并把问题摘要与 finding
 /code-review workflow --fix @test/
 /code-review architecture
 /code-review module host,client --fix
+/code-review module --paths host,client --fix
 /code-review changes --effort high
 /code-review commit <sha>
 /code-review range main feature/x

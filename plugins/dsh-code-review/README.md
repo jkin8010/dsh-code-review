@@ -68,6 +68,7 @@ Available directly in a project conversation (mirroring the ocr CLI review types
 /code-review workflow --fix @test/
 /code-review architecture
 /code-review module host,client --fix
+/code-review module --paths host,client --fix
 /code-review changes --effort high
 /code-review commit <sha>
 /code-review range main feature/x

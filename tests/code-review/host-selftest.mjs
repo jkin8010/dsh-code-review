@@ -282,6 +282,14 @@ const cmdAsync = await registeredCommand.handler(invocation('module host --async
 assert.equal(cmdAsync.kind, 'success');
 assert.match(cmdAsync.text, /已启动/);
 
+const cmdPaths = await registeredCommand.handler(invocation('module --paths host,client --async'));
+assert.equal(cmdPaths.kind, 'success', cmdPaths.text);
+assert.match(cmdPaths.text, /已启动/);
+
+const cmdAtModule = await registeredCommand.handler(invocation('module @host --async'));
+assert.equal(cmdAtModule.kind, 'success', cmdAtModule.text);
+assert.match(cmdAtModule.text, /已启动/);
+
 const cmdList = await registeredCommand.handler(invocation('list 5'));
 assert.equal(cmdList.kind, 'success');
 assert.match(cmdList.text, /次评审/);

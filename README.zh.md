@@ -134,6 +134,8 @@ Agent 会调用 `code_review` → `start`（默认等待评审完成）→ 在�
 /code-review workflow --fix @test/           # 同上，完成后自动新建修复 Session
 /code-review architecture @/Users/me/proj    # 项目架构
 /code-review module src/server,src/db --fix  # 代码模块 + 修复会话
+/code-review module --paths src/server,src/db  # 等价写法
+/code-review module @host                     # 当前项目内的 host 目录（简写）
 /code-review changes --effort high           # 当前改动
 /code-review commit abc123
 /code-review range main feature/login

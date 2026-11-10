@@ -722,7 +722,7 @@ export function buildMock() {
     version: 184,
     ok: true,
     config: {
-      hostVersion: '0.6.2',
+      hostVersion: '0.6.3',
       projectRoots: ['/Users/jkin/workspace/jkin8010'],
       defaultProjectId: current.id,
       defaultProjectPath: '/Users/jkin/workspace/jkin8010/mopng-api',
