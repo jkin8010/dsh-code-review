@@ -286,7 +286,7 @@ export function createCodeReviewCommand({
   async function fixJob(job, controller) {
     try {
       const workspaceRegistry = typeof getWorkspaceRegistry === 'function' ? getWorkspaceRegistry() : null;
-      const result = await createFixSessionForJob({ controller, workspaceRegistry, job, logger });
+      const result = await createFixSessionForJob({ controller, workspaceRegistry, job, logger, stateDir: config?.stateDir });
       return result;
     } catch (error) {
       return { error: errorText(error) };

@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto';
+import { appendFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { errorText } from './shared.js';
 
 /**
@@ -61,7 +63,7 @@ export function buildFixPrompt(job, findings, {
  * @param logger - plugin logger.
  * @returns structured result; prompt failures still return the new session id.
  */
-export async function createFixSessionForJob({ controller, workspaceRegistry, job, logger }) {
+export async function createFixSessionForJob({ controller, workspaceRegistry, job, logger, stateDir }) {
   if (!controller || typeof controller.create !== 'function') {
     const error = new Error('当前 DSH 环境不支持从插件创建会话（sessionController 不可用）');
     error.code = 'code-review/session-unavailable';
@@ -115,12 +117,20 @@ export async function createFixSessionForJob({ controller, workspaceRegistry, jo
   try {
     if (typeof controller.prompt === 'function') {
       await controller.prompt(
-        { sessionId, content: [{ type: 'text', text: prompt }], requestId },
+        { sessionId, mode: 'queue', content: [{ type: 'text', text: prompt }], requestId },
         { kind: 'user', rpcId: requestId },
       );
     }
   } catch (cause) {
-    logger?.warn?.(`fix prompt failed for ${job.id}: ${errorText(cause)}`);
+    const promptError = errorText(cause);
+    logger?.warn?.(`fix prompt failed for ${job.id}: ${promptError}`);
+    if (stateDir) {
+      // Keep an on-disk trace so `fix.create` failures are diagnosable without
+      // opening a devtools console on the running Host.
+      void appendFile(join(stateDir, 'fix-errors.jsonl'), `${JSON.stringify({
+        at: new Date().toISOString(), jobId: job.id, sessionId, error: promptError,
+      })}\n`).catch(() => {});
+    }
     // The session is intentionally retained on a prompt failure: the caller can
     // still open it, and the prompt text is returned for a clipboard fallback.
     return {
@@ -131,7 +141,8 @@ export async function createFixSessionForJob({ controller, workspaceRegistry, jo
       prompt,
       title: job.title,
       projectName: job.projectName,
-      error: { code: 'code-review/fix-prompt-failed', message: errorText(cause) },
+      promptError,
+      error: { code: 'code-review/fix-prompt-failed', message: promptError },
     };
   }
   return {

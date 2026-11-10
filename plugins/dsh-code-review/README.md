@@ -87,9 +87,9 @@ Available directly in a project conversation (mirroring the ocr CLI review types
 
 ## One-click fix session
 
-The review details page offers "New fix session": it calls the Host's `sessionController.create({ cwd })` to create a session in the project directory,
-turns this review's findings into a fix prompt (critical/high first, including files and line numbers, with the suggested code) and sends it automatically;
-when the client supports `uiWorkspace.openSession` it jumps straight to the new session, otherwise open it from the session list on the left.
+The review details page offers "New fix session": it creates a session in the project Workspace and fills the findings
+(critical/high first, including files and line numbers, with the suggested code) into the composer as a **fix prompt draft**;
+press Enter to send (edit first if needed). `/code-review --fix` and the fix-session RPC use the Host auto-send path.
 
 > This requires DSH to provide `sessionController`; when the Host is older (not restarted yet) the client falls back to
 > DSH Client Remote's `session.create` / `session.prompt` to create the session, and prompts you to restart DSH to enable the full mode.

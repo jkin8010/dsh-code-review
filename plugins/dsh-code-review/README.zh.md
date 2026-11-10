@@ -84,9 +84,9 @@ Agent 会启动真实评审（默认等待完成）并把问题摘要与 finding
 
 ## 一键修复 Session
 
-评审详情页提供「新建修复 Session」：调用 Host 的 `sessionController.create({ cwd })` 在项目目录创建会话，
-并把本次 findings 整理成修复提示词（优先 critical/high、含文件与行号、建议代码）自动发送；
-客户端支持 `uiWorkspace.openSession` 时直接跳到新会话，否则在左侧会话列表打开。
+评审详情页提供「新建修复 Session」：在项目 Workspace 新建会话，并把 findings 整理成修复提示词
+（优先 critical/high、含文件与行号、建议代码）**填入输入框**，按 Enter 发送（可先编辑）。
+`/code-review --fix` 与修复会话 RPC 走 Host 自动发送路径。
 
 > 需要 DSH 提供 `sessionController`；Host 较旧（未重启）时客户端会用 DSH Client Remote 的
 > `session.create` / `session.prompt` 兜底创建，并提示重启 DSH 启用完整模式。

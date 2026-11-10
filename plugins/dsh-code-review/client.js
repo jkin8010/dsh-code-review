@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     // 1. 常量 / 字典
     // =====================================================================
 
-    const PLUGIN_VERSION = '0.6.1';
+    const PLUGIN_VERSION = '0.6.2';
     const ENDPOINT = 'code-review';
     const PANEL_ID = 'code-review';
     const PANEL_ORDER = 24;
@@ -3847,6 +3847,42 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       return null;
     }
 
+    /**
+     * Preferred UI path: let the DSH client create a Workspace session and put
+     * the fix prompt into its composer as a draft. This does not depend on the
+     * Host `session.prompt` wire path, so the operator always sees the prompt
+     * and can press Enter (or edit it first).
+     */
+    async function startFixSessionDraft(context) {
+      const spec = obj(context);
+      const ui = clientCtx && typeof clientCtx.get === 'function' ? clientCtx.get('uiWorkspace') : null;
+      if (!ui || typeof ui.startSession !== 'function') return false;
+      const projectPath = str(spec.projectPath).replace(/\/+$/, '');
+      const findings = arr(spec.findings);
+      if (!projectPath || !findings.length) return false;
+      let workspaceId = '';
+      try {
+        const workspaces = clientCtx.get('workspaces');
+        const snapshot = workspaces && workspaces.list && workspaces.list.getSnapshot();
+        const items = arr(snapshot && snapshot.items);
+        const found = items.find((item) => str(item.path).replace(/\/+$/, '') === projectPath);
+        if (found) {
+          workspaceId = str(found.workspaceId);
+        } else if (workspaces && typeof workspaces.create === 'function') {
+          const created = await workspaces.create({ path: projectPath });
+          workspaceId = str(created && (created.workspaceId || created.id));
+        }
+      } catch {
+        workspaceId = '';
+      }
+      if (!workspaceId) return false;
+      ui.startSession(workspaceId, {
+        prompt: buildFixPromptText(spec.job, findings),
+        clearPreviousDraft: true,
+      });
+      return true;
+    }
+
     async function createFixSessionViaRemote(context) {
       const api = getFixClientApi();
       if (!api) return null;
@@ -4066,6 +4102,16 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       }, [rpc, pushToast, refresh]);
 
       const createFixSession = React.useCallback(async (id, context) => {
+        try {
+          const drafted = await startFixSessionDraft(context);
+          if (drafted) {
+            pushToast('已新建会话并填入修复提示词，按 Enter 发送（可先编辑）', 'success');
+            refresh();
+            return;
+          }
+        } catch {
+          /* fall through to the Host path */
+        }
         try {
           const envelope = await rpc('fix.create', { jobId: str(id) });
           const payload = unwrapEnvelope(envelope, (value) => Boolean(value && typeof value.sessionId === 'string' && value.sessionId));

@@ -155,9 +155,9 @@ Agent 会调用 `code_review` → `start`（默认等待评审完成）→ 在�
    - 项目架构 / 代码模块 / 信息流：模块评审填目录路径，信息流可留空自动发现
 3. 提交后在总览「实时评审队列」查看阶段进度与动态，点击进入详情查看 findings。
 4. 总览热力图与「最近项目 / 热点模块」跟踪评审节奏；项目页可切换当前项目。
-5. **一键修复**：在评审详情点「新建修复 Session」——插件会在该项目目录新建一个 DSH 会话，
-   自动把本次 findings（严重度优先、文件名:行号、建议代码）整理成修复提示词发进去；
-   支持 `uiWorkspace.openSession` 的客户端会自动跳到该会话，否则在左侧会话列表打开即可。
+5. **一键修复**：在评审详情点「新建修复 Session」——插件会在该项目 Workspace 新建会话，
+   并把本次 findings（严重度优先、文件名:行号、建议代码）作为**修复提示词填入输入框**，按 Enter 发送（可先编辑）；
+   `/code-review --fix` 则走 Host 自动发送。
    如果插件 Host 还是旧版本（未重启），客户端会自动用 DSH Client Remote 的 `session.create` + `session.prompt`
    （或 Client SessionManager）兜底创建；设置页会显示客户端/Host 版本差异，按提示**完全退出并重新打开 DSH** 即可加载新版 Host。
 5. **项目列表会自动包含**：`projectRoots` 下（默认 `/Users/jkin/workspace`，向下 2 层）的 Git 仓库、

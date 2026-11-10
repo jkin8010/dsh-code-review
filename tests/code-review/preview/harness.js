@@ -131,6 +131,11 @@ const mockRemote = {
     },
   },
 };
+const mockUiWorkspace = {
+  startSession: (workspaceId, options) => {
+    window.__START_SESSION__ = { workspaceId, options };
+  },
+};
 const mockWorkspaces = {
   list: {
     getSnapshot: () => ({
@@ -147,6 +152,7 @@ const ctx = {
     if (name === 'connection') return connection;
     if (name === 'remote') return mockRemote;
     if (name === 'workspaces') return mockWorkspaces;
+    if (name === 'uiWorkspace') return mockUiWorkspace;
     return undefined;
   },
   effect(fn, _label) {

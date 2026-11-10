@@ -247,23 +247,26 @@ async function main() {
   if (!markOk) failed = true;
   await page.screenshot({ path: join(SHOTS, 'code-review-fixed.png'), fullPage: false, animations: 'disabled' });
 
-  // -- fix session fallback (old Host) --------------------------------------
+  // -- fix session draft ----------------------------------------------------
   const fixClicked = await page.evaluate(() => {
     const button = [...document.querySelectorAll('button')].find((node) => node.textContent.includes('新建修复 Session'));
     if (button) button.click();
     return Boolean(button);
   });
-  await page.waitForTimeout(1000);
-  const fixToast = fixClicked ? await page.$$eval('.cr-toasts', (nodes) => nodes.map((node) => node.textContent).join(' ')) : '';
-  const fixRequest = await page.evaluate(() => window.__FIX_PROMPT__ || null);
-  const requestIdOk = Boolean(fixRequest && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(fixRequest.requestId)));
-  const promptOk = Boolean(fixRequest && String(fixRequest.content?.[0]?.text || '').includes('代码修复助手'));
-  const modeOk = Boolean(fixRequest && fixRequest.mode === 'queue');
-  const createRequest = await page.evaluate(() => window.__FIX_CREATE__ || null);
-  const workspaceOk = Boolean(createRequest && createRequest.workspaceId === 'ws-demo');
-  const fixOk = fixClicked && /已创建修复会话/.test(fixToast) && requestIdOk && promptOk && modeOk && workspaceOk;
-  results.push({ view: 'fix-fallback', ok: fixOk, issues: fixOk ? [] : [`修复会话 fallback 异常：clicked=${fixClicked} uuid=${requestIdOk} prompt=${promptOk} mode=${modeOk} workspace=${workspaceOk} toast=${fixToast}`] });
-  if (!fixOk) failed = true;
+  await page.waitForTimeout(800);
+  const draft = await page.evaluate(() => window.__START_SESSION__ || null);
+  const fixToast = await page.$$eval('.cr-toasts', (nodes) => nodes.map((node) => node.textContent).join(' '));
+  const draftOk = Boolean(fixClicked
+    && draft
+    && draft.workspaceId === 'ws-demo'
+    && String(draft.options?.prompt || '').includes('代码修复助手')
+    && /已新建会话并填入修复提示词/.test(fixToast));
+  results.push({
+    view: 'fix-draft',
+    ok: draftOk,
+    issues: draftOk ? [] : [`修复会话 draft 未生效：clicked=${fixClicked} workspace=${draft?.workspaceId || ''} prompt=${Boolean(draft?.options?.prompt)} toast=${fixToast}`],
+  });
+  if (!draftOk) failed = true;
 
   // -- launch --------------------------------------------------------------
   await openView('launch');

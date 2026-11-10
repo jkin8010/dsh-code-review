@@ -155,11 +155,9 @@ Besides having the Agent call the tool, you can also use slash commands right in
    - Project architecture / code module / data flow: for a module review fill in the directory path; the data-flow review can be left empty for auto-discovery
 3. After submitting, watch the stage progress and activity in the overview's "Live review queue", then click through to the details for the findings.
 4. The overview heatmap and "recent projects / hotspot modules" track the review rhythm; the project page lets you switch the current project.
-5. **One-click fix**: on the review details page click "New fix session" — the plugin creates a DSH session in that project's directory,
-   automatically turns this review's findings (severity first, file name:line number, suggested code) into a fix prompt and sends it there;
-   clients that support `uiWorkspace.openSession` jump straight to that session, otherwise just open it from the session list on the left.
-   If the plugin Host is still an older version (not restarted yet), the client automatically falls back to DSH Client Remote's `session.create` + `session.prompt`
-   (or the Client SessionManager) to create it; the settings page shows the client/Host version difference, so just follow the hint to **quit DSH completely and reopen it** to load the new Host.
+5. **One-click fix**: on the review details page click "New fix session" — the plugin creates a session in that project's Workspace
+   and fills this review's findings (severity first, file name:line number, suggested code) into the composer as a **fix prompt draft**;
+   press Enter to send (edit first if needed). `/code-review --fix` sends it automatically through the Host.
 5. **The project list automatically includes**: Git repositories under `projectRoots` (default `/Users/jkin/workspace`, 2 levels deep),
    DSH workspaces, and projects that have already been reviewed (even if they are not under `projectRoots`).
 6. **Fixed markers**: the review details page can mark/unmark "fixed" and filter by fix status; old findings that a new review no longer reports are marked fixed automatically.

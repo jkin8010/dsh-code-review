@@ -92,6 +92,7 @@ export function createRpcHandler({ config, snapshot, jobs, getServices, logger }
           workspaceRegistry: services().workspaceRegistry,
           job,
           logger,
+          stateDir: config.stateDir,
         });
       }
       case 'project.browse': {
