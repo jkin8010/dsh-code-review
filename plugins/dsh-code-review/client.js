@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     // 1. 常量 / 字典
     // =====================================================================
 
-    const PLUGIN_VERSION = '0.8.4';
+    const PLUGIN_VERSION = '0.8.5';
     const ENDPOINT = 'code-review';
     const PANEL_ID = 'code-review';
     const PANEL_ORDER = 24;
@@ -941,7 +941,9 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
 .cr-graph-canvas{position:relative;border:1px solid var(--line);border-radius:16px;overflow:hidden;
   background:radial-gradient(circle at 50% 40%,rgba(53,224,200,.055),transparent 62%),var(--code-bg);
   height:500px;min-height:400px}
-.cr-graph-svg{width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+.cr-graph-canvas{user-select:none;-webkit-user-select:none}
+.cr-graph-svg{width:100%;height:100%;display:block;touch-action:none;cursor:grab;
+  user-select:none;-webkit-user-select:none;-webkit-user-drag:none}
 .cr-graph-tools{position:absolute;right:12px;top:12px;z-index:5;display:flex;align-items:center;gap:4px;
   padding:4px;border:1px solid var(--line);border-radius:10px;background:var(--overlay);
   box-shadow:0 8px 24px -18px var(--shadow);backdrop-filter:blur(8px)}
@@ -2937,16 +2939,6 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       const viewRef = React.useRef(view);
       viewRef.current = view;
       const dragRef = React.useRef(null);
-      const pointOf = (event) => {
-        const svg = svgRef.current;
-        if (!svg) return null;
-        const matrix = svg.getScreenCTM?.();
-        if (!matrix) return null;
-        const point = svg.createSVGPoint();
-        point.x = event.clientX;
-        point.y = event.clientY;
-        return point.matrixTransform(matrix.inverse());
-      };
       const zoomAt = React.useCallback((factor, screenPoint) => {
         const svg = svgRef.current;
         const current = viewRef.current;
@@ -2987,20 +2979,34 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       }, [zoomAt]);
       const onPointerDown = (event) => {
         if (event.button !== 0) return;
-        const origin = pointOf(event);
-        if (!origin) return;
-        dragRef.current = { x: origin.x, y: origin.y, vx: viewRef.current.x, vy: viewRef.current.y };
+        // Let node clicks through: capturing the pointer would retarget the click
+        // to the SVG and the node's onClick handler would never run.
+        if (event.target?.closest?.('.cr-graph-node')) return;
+        const svg = svgRef.current;
+        const matrix = svg?.getScreenCTM?.();
+        if (!svg || !matrix) return;
+        // Pan in screen space with the scale sampled at drag start. Re-projecting
+        // the pointer through the changing viewBox fed the movement back into
+        // itself and made the canvas jitter.
+        dragRef.current = {
+          clientX: event.clientX,
+          clientY: event.clientY,
+          vx: viewRef.current.x,
+          vy: viewRef.current.y,
+          scaleX: matrix.a || 1,
+          scaleY: matrix.d || 1,
+        };
+        // Don't preventDefault here: it would suppress the compatibility click
+        // that selects a node. Text selection is disabled by CSS instead.
         event.currentTarget.setPointerCapture?.(event.pointerId);
       };
       const onPointerMove = (event) => {
         const drag = dragRef.current;
         if (!drag) return;
-        const current = pointOf(event);
-        if (!current) return;
         setView((previous) => ({
           ...previous,
-          x: drag.vx - (current.x - drag.x),
-          y: drag.vy - (current.y - drag.y),
+          x: drag.vx - (event.clientX - drag.clientX) / drag.scaleX,
+          y: drag.vy - (event.clientY - drag.clientY) / drag.scaleY,
         }));
       };
       const onPointerUp = (event) => {
@@ -3014,7 +3020,13 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         zoomIn: () => zoomAt(1.25),
         zoomOut: () => zoomAt(1 / 1.25),
         reset: () => setView({ x: 0, y: 0, w: width, h: height }),
-        pointer: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp },
+        pointer: {
+          onPointerDown,
+          onPointerMove,
+          onPointerUp,
+          onPointerCancel: onPointerUp,
+          onDragStart: (event) => event.preventDefault(),
+        },
       };
     }
 

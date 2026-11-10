@@ -398,6 +398,7 @@ async function main() {
   }
   await page.click('.cr-graph-node');
   await page.waitForTimeout(300);
+  const archNodeSelected = await page.$$eval('.cr-graph-node.is-active', (nodes) => nodes.length > 0);
   await page.mouse.move(700, 960);
   await page.waitForTimeout(300);
   await shoot('architecture');
@@ -415,6 +416,7 @@ async function main() {
   }
   await page.click('.cr-graph-node');
   await page.waitForTimeout(300);
+  const flowNodeSelected = await page.$$eval('.cr-graph-node.is-active', (nodes) => nodes.length > 0);
   await page.mouse.move(700, 960);
   await page.waitForTimeout(300);
   await shoot('flow');
@@ -459,6 +461,29 @@ async function main() {
     return { height: viewBox[3] || 0, nodes: rects.length, overlaps };
   });
   const bigOk = bigInfo.height > 900 && bigInfo.nodes > 15 && !bigInfo.overlaps;
+  // -- drag pan: no text selection, no feedback jitter ---------------------
+  await page.click('.cr-graph-tool.is-text');
+  await page.waitForTimeout(150);
+  const dragStart = await page.$eval('.cr-graph-svg', (element) => element.getAttribute('viewBox'));
+  const dragBox = await page.$eval('.cr-graph-svg', (element) => {
+    const rect = element.getBoundingClientRect();
+    return { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+  });
+  await page.mouse.move(dragBox.x, dragBox.y);
+  await page.mouse.down();
+  await page.mouse.move(dragBox.x + 120, dragBox.y + 70, { steps: 6 });
+  await page.mouse.up();
+  await page.waitForTimeout(250);
+  const dragEnd = await page.$eval('.cr-graph-svg', (element) => element.getAttribute('viewBox'));
+  const selectedText = await page.evaluate(() => window.getSelection()?.toString() || '');
+  const dragOk = Boolean(selectedText === '' && dragStart && dragEnd && dragStart !== dragEnd && flowNodeSelected);
+  results.push({
+    view: 'flow-drag',
+    ok: dragOk,
+    issues: dragOk ? [] : [`画布拖拽异常：selectedText="${selectedText}" before=${dragStart} after=${dragEnd} nodeSelected=${flowNodeSelected}`],
+  });
+  if (!dragOk) failed = true;
+
   results.push({
     view: 'flow-big',
     ok: bigOk,
