@@ -745,6 +745,7 @@ export function createSnapshot({
         projectRoots: config.projectRoots,
         projectDepth: config.projectDepth ?? 2,
         addedProjects: [...(addedProjectPaths ?? [])],
+        hostVersion: typeof config.hostVersion === 'string' ? config.hostVersion : '',
         defaultProjectId: state.currentId,
         defaultProjectPath: config.defaultProjectPath,
         pollSeconds: config.pollSeconds,

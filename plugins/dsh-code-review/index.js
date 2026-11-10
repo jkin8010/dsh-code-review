@@ -16,6 +16,7 @@
  * `ocr`, an unconfigured LLM, or a non-git project leaves the page readable and
  * explains the next action in `health` / `overview`.
  */
+import { readFileSync } from 'node:fs';
 import { readFile, readdir, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -149,6 +150,14 @@ async function resolveConfiguredToken(config) {
   }
 }
 
+
+const HOST_VERSION = (() => {
+  try {
+    return JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version || 'unknown';
+  } catch {
+    return 'unknown';
+  }
+})();
 
 export function apply(ctx, rawConfig) {
   const logger = createLogger(ctx);

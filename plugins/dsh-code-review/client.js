@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     // 1. 常量 / 字典
     // =====================================================================
 
-    const PLUGIN_VERSION = '0.5.1';
+    const PLUGIN_VERSION = '0.5.2';
     const ENDPOINT = 'code-review';
     const PANEL_ID = 'code-review';
     const PANEL_ORDER = 24;
@@ -3550,7 +3550,15 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             h('div', { className: 'cr-drawer-title' }, h(Icon, { name: 'shield', size: 11 }), '关于'),
             h('div', { style: { marginTop: 8 } },
               h(KV, { label: '插件', value: '@jkin8010/dsh-code-review' }),
-              h(KV, { label: '插件版本', value: `v${PLUGIN_VERSION}` }),
+              h(KV, { label: '客户端版本', value: `v${PLUGIN_VERSION}` }),
+              h(KV, {
+                label: 'Host 版本',
+                value: config.hostVersion ? `v${str(config.hostVersion)}` : '未上报（旧版 Host）',
+              }),
+              (config.hostVersion && config.hostVersion !== PLUGIN_VERSION) || !config.hostVersion
+                ? h('div', { className: 'cr-hint', style: { color: '#ffb27a', marginTop: 6 } },
+                  '客户端与 Host 版本不一致：请完全退出并重新打开 DSH（仅刷新页面只会更新客户端）')
+                : null,
               h(KV, { label: 'OCR', value: str(config.ocrVersion, 'open-code-review') }),
               h(KV, { label: '快照版本', value: `v${num(snapshot.version)}` }),
               h(KV, { label: '生成时间', value: fmtStamp(snapshot.generatedAt) }),
@@ -3733,14 +3741,46 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
      * Remote session endpoints exist in the running Host, so create + prompt the
      * session directly. Keeps the button working without a Host restart.
      */
-    async function createFixSessionViaRemote(context) {
+    function getFixClientApi() {
       const remote = getClientRemote();
-      if (!remote || !remote.session || typeof remote.session.create !== 'function') {
-        return null;
+      if (remote && remote.session && typeof remote.session.create === 'function') {
+        return {
+          create: (opts) => remote.session.create(opts),
+          prompt: (sessionId, text, requestId) => remote.session.prompt({
+            requestId,
+            sessionId,
+            content: [{ type: 'text', text }],
+            clientTimeZone: (() => {
+              try { return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined; } catch { return undefined; }
+            })(),
+          }),
+        };
       }
+      try {
+        const sessions = clientCtx && typeof clientCtx.get === 'function' ? clientCtx.get('sessions') : null;
+        const manager = sessions && sessions.manager;
+        if (manager && typeof manager.create === 'function' && typeof manager.get === 'function') {
+          return {
+            create: (opts) => manager.create(opts),
+            prompt: (sessionId, text, requestId) => {
+              const session = manager.get(sessionId);
+              if (!session || typeof session.prompt !== 'function') throw new Error('Session 尚未就绪');
+              return session.prompt([{ type: 'text', text }], undefined, undefined, requestId);
+            },
+          };
+        }
+      } catch {
+        /* service lookup is best effort */
+      }
+      return null;
+    }
+
+    async function createFixSessionViaRemote(context) {
+      const api = getFixClientApi();
+      if (!api) return null;
       const projectPath = str(obj(context).projectPath);
       if (!projectPath) return null;
-      const created = await remote.session.create({ cwd: projectPath });
+      const created = await api.create({ cwd: projectPath });
       if (!created || !created.ok) {
         throw new Error(errorText(obj(created && created.error).message || '创建会话失败'));
       }
@@ -3750,15 +3790,8 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       const requestId = `code-review-fix-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       let prompted = false;
       try {
-        const result = await remote.session.prompt({
-          requestId,
-          sessionId,
-          content: [{ type: 'text', text: prompt }],
-          clientTimeZone: (() => {
-            try { return Intl.DateTimeFormat().resolvedOptions().timeZone || undefined; } catch { return undefined; }
-          })(),
-        });
-        prompted = Boolean(result && result.ok);
+        const result = await api.prompt(sessionId, prompt, requestId);
+        prompted = Boolean(result && (result.ok || result.accepted));
       } catch {
         prompted = false;
       }
@@ -3956,7 +3989,9 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
           const fallback = await createFixSessionViaRemote(context).catch((cause) => {
             throw cause;
           });
-          if (!fallback) throw error;
+          if (!fallback) {
+            throw new Error(`${errorText(error)}；客户端 v${PLUGIN_VERSION} 兼容通道不可用。请完全退出并重新打开 DSH 以加载新版 Host`);
+          }
           const opened = openDshSession(fallback.sessionId);
           pushToast(
             `${fallback.prompted ? '已创建修复会话' : '修复会话已创建（提示词未发送）'}${opened ? '并打开' : ` ${fallback.sessionId}，请在左侧会话列表打开`}。插件 Host 版本较旧，重启 DSH 可启用完整模式`,
