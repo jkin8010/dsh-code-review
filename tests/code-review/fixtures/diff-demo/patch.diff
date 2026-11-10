@@ -1,0 +1,21 @@
+diff --git a/src/app.js b/src/app.js
+index 1111111..2222222 100644
+--- a/src/app.js
++++ b/src/app.js
+@@ -10,4 +10,16 @@ const express = require('express');
+ function createApp() {
+-  return app;
++  const secret = 'sk-live-abc123456';
++  console.log('starting app');
++  // TODO: remove debug
++  try {
++    risky();
++  } catch {}
++  const config = JSON.parse(process.env.CONFIG);
++  document.body.innerHTML = process.env.HTML;
++  if (appState == null) {
++    appState = { ready: false };
++  }
++  setInterval(() => tick(), 1000);
++  return app;
+ }

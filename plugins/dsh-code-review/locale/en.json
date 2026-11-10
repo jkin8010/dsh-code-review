@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Code Review Center",
+    "description": "A code review studio powered by open-code-review: workspace, commit, range, architecture, module and information-flow reviews with live progress, a GitHub-style heatmap and finding tracking."
+  }
+}

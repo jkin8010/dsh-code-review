@@ -1,0 +1,7 @@
+node_modules/
+.pnpm-store/
+.tmp/
+*.log
+.DS_Store
+tests/.state/
+tests/.tmp/

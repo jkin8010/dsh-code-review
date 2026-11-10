@@ -1,0 +1,21 @@
+- insert:
+    - id: qise-code-review
+      name: '@qise/dsh-code-review'
+      config:
+        # 自动发现这些目录下的 git 项目（直接子目录）。
+        projectRoots:
+          - /Users/jkin/workspace/jkin8010
+        # 额外纳入的项目目录（可不在 projectRoots 下、也可是非 Git 目录）。
+        extraProjects: []
+        # 空 = 最近提交的已发现项目。
+        defaultProjectPath: ''
+        engine: auto
+        pollSeconds: 2
+        # OCR 引擎（非必填；也可用环境变量 OCR_LLM_URL / OCR_LLM_TOKEN / OCR_LLM_MODEL 或 ~/.opencodereview/config.json）
+        ocr:
+          command: ''
+          provider: ''
+          model: ''
+          effort: medium
+          concurrency: 8
+          timeoutMin: 15
