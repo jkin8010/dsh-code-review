@@ -81,7 +81,20 @@ function groupFiles(findings) {
 }
 
 function rpcReply(rpcId, result) {
-  return Response.json({ type: 'server-response', rpcId, result });
+  // The DSH client rejects a failure envelope whose error lacks a `details`
+  // record, replacing it with "invalid server-response failure". Always emit
+  // the full shape so the real error message reaches the UI.
+  const value = result && result.ok === false
+    ? {
+      ...result,
+      error: {
+        code: typeof result.error?.code === 'string' ? result.error.code : 'code-review/failed',
+        message: typeof result.error?.message === 'string' ? result.error.message : String(result.error ?? '未知错误'),
+        details: result.error?.details && typeof result.error.details === 'object' ? result.error.details : {},
+      },
+    }
+    : result;
+  return Response.json({ type: 'server-response', rpcId, result: value });
 }
 
 function registerRpc(ctx, handler, logger) {

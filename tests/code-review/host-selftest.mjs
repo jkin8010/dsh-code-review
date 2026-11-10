@@ -257,6 +257,15 @@ const llm = await rpc('llmTest', {});
 assert.equal(typeof llm.ok, 'boolean');
 
 // --- 6. bad requests ------------------------------------------------------
+// The client requires a full failure envelope (code/message/details); a missing
+// `details` record would surface as "invalid server-response failure" instead.
+const rawFailure = await route.fetch(envelope({ method: 'nope', payload: {} }));
+const rawFailureBody = await rawFailure.json();
+assert.equal(rawFailureBody.type, 'server-response');
+assert.equal(rawFailureBody.result.ok, false);
+assert.equal(typeof rawFailureBody.result.error.code, 'string');
+assert.equal(typeof rawFailureBody.result.error.message, 'string');
+assert.equal(typeof rawFailureBody.result.error.details, 'object');
 await assert.rejects(() => rpc('nope'), /未知方法/);
 await assert.rejects(() => rpc('job', { id: 'missing' }), /不存在/);
 await assert.rejects(() => rpc('start', { type: 'commit', projectPath: TEMP_REPO }), /commit/);

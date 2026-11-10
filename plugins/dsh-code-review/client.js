@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     // 1. 常量 / 字典
     // =====================================================================
 
-    const PLUGIN_VERSION = '0.3.2';
+    const PLUGIN_VERSION = '0.3.3';
     const ENDPOINT = 'code-review';
     const PANEL_ID = 'code-review';
     const PANEL_ORDER = 24;
@@ -1432,7 +1432,11 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             at: Date.now(),
           });
         } catch (cause) {
-          setState((current) => ({ ...current, loading: false, error: errorText(cause) }));
+          const message = errorText(cause);
+          const hint = /invalid server-response|未知方法/i.test(message)
+            ? '（Host 可能仍是旧版本，请重启 DSH 后再试）'
+            : '';
+          setState((current) => ({ ...current, loading: false, error: `${message}${hint}` }));
         }
       }, [rpc]);
       React.useEffect(() => {
