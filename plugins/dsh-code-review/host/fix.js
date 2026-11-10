@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { errorText } from './shared.js';
 
 /**
@@ -62,7 +63,8 @@ export async function createFixSessionForJob({ controller, job, logger }) {
     error.code = 'code-review/session-failed';
     throw error;
   }
-  const requestId = `code-review-fix-${job.id}-${Date.now()}`;
+  // Gateway strict codecs validate the wire request; requestId must be a UUID.
+  const requestId = randomUUID();
   try {
     if (typeof controller.prompt === 'function') {
       await controller.prompt(
@@ -77,6 +79,7 @@ export async function createFixSessionForJob({ controller, job, logger }) {
       jobId: job.id,
       prompted: false,
       findings: findings.length,
+      prompt,
       error: { code: 'code-review/fix-prompt-failed', message: errorText(cause) },
     };
   }
@@ -85,6 +88,7 @@ export async function createFixSessionForJob({ controller, job, logger }) {
     jobId: job.id,
     prompted: true,
     findings: findings.length,
+    prompt,
     title: job.title,
     projectName: job.projectName,
   };

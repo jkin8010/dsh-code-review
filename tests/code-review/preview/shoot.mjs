@@ -239,8 +239,11 @@ async function main() {
   });
   await page.waitForTimeout(1000);
   const fixToast = fixClicked ? await page.$$eval('.cr-toasts', (nodes) => nodes.map((node) => node.textContent).join(' ')) : '';
-  const fixOk = fixClicked && /已创建修复会话/.test(fixToast) && /session-fallback-fix|修复会话/.test(fixToast);
-  results.push({ view: 'fix-fallback', ok: fixOk, issues: fixOk ? [] : [`修复会话 fallback 未生效：clicked=${fixClicked} toast=${fixToast}`] });
+  const fixRequest = await page.evaluate(() => window.__FIX_PROMPT__ || null);
+  const requestIdOk = Boolean(fixRequest && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(fixRequest.requestId)));
+  const promptOk = Boolean(fixRequest && String(fixRequest.content?.[0]?.text || '').includes('代码修复助手'));
+  const fixOk = fixClicked && /已创建修复会话/.test(fixToast) && requestIdOk && promptOk;
+  results.push({ view: 'fix-fallback', ok: fixOk, issues: fixOk ? [] : [`修复会话 fallback 异常：clicked=${fixClicked} uuid=${requestIdOk} prompt=${promptOk} toast=${fixToast}`] });
   if (!fixOk) failed = true;
 
   // -- launch --------------------------------------------------------------

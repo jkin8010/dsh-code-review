@@ -100,6 +100,10 @@ function rpcReply(rpcId, result) {
   return Response.json({ type: 'server-response', rpcId, result: value });
 }
 
+// Captured through `ctx.inject(['sessionController'])` in apply(); module-level so
+// the RPC handler (defined outside apply) and the command share one reference.
+let activeSessionController = null;
+
 function registerRpc(ctx, handler, logger) {
   const registry = ctx.get?.('connection')?.fetch;
   if (typeof registry?.register !== 'function') return null;
@@ -264,7 +268,7 @@ export function apply(ctx, rawConfig) {
     snapshot,
     config,
     logger,
-    getSessionController: () => ctx.get?.('sessionController'),
+    getSessionController: () => activeSessionController ?? ctx.get?.('sessionController'),
   });
   if (typeof ctx.inject === 'function') {
     ctx.inject(['commands'], (scope) => {
@@ -336,7 +340,7 @@ export function apply(ctx, rawConfig) {
           throw error;
         }
         return createFixSessionForJob({
-          controller: ctx.get?.('sessionController'),
+          controller: activeSessionController ?? ctx.get?.('sessionController'),
           job,
           logger,
         });

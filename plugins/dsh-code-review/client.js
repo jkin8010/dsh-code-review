@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     // 1. 常量 / 字典
     // =====================================================================
 
-    const PLUGIN_VERSION = '0.5.2';
+    const PLUGIN_VERSION = '0.5.3';
     const ENDPOINT = 'code-review';
     const PANEL_ID = 'code-review';
     const PANEL_ORDER = 24;
@@ -3787,7 +3787,16 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       const sessionId = str(obj(created.value).sessionId);
       if (!sessionId) throw new Error('创建会话失败：未返回 sessionId');
       const prompt = buildFixPromptText(obj(context).job, arr(obj(context).findings));
-      const requestId = `code-review-fix-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      // The Remote gateway validates requestId as a UUID.
+      let requestId;
+      try {
+        requestId = globalThis.crypto?.randomUUID?.();
+      } catch {
+        requestId = undefined;
+      }
+      if (!requestId) {
+        requestId = '00000000-0000-4000-8000-' + String(Date.now()).slice(-12).padStart(12, '0');
+      }
       let prompted = false;
       try {
         const result = await api.prompt(sessionId, prompt, requestId);
@@ -3795,7 +3804,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       } catch {
         prompted = false;
       }
-      return { sessionId, prompted, findings: arr(obj(context).findings).length };
+      return { sessionId, prompted, prompt, findings: arr(obj(context).findings).length };
     }
 
     class Boundary extends React.Component {
@@ -3976,7 +3985,8 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
           const sessionId = str(payload.sessionId);
           const opened = openDshSession(sessionId);
           if (payload.prompted === false) {
-            pushToast(`修复会话已创建，但问题描述发送失败：${errorText(obj(payload.error).message)}`, 'warn');
+            const copied = payload.prompt ? await copyToClipboard(str(payload.prompt)) : false;
+            pushToast(`修复会话已创建，但提示词发送失败：${errorText(obj(payload.error).message)}${copied ? '；提示词已复制，请到新会话粘贴发送' : ''}`, 'warn');
           } else {
             pushToast(opened
               ? `已创建修复会话并打开（${num(payload.findings)} 条 findings）`
@@ -3993,8 +4003,14 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             throw new Error(`${errorText(error)}；客户端 v${PLUGIN_VERSION} 兼容通道不可用。请完全退出并重新打开 DSH 以加载新版 Host`);
           }
           const opened = openDshSession(fallback.sessionId);
+          let copyNote = '';
+          if (!fallback.prompted && fallback.prompt) {
+            const copied = await copyToClipboard(str(fallback.prompt));
+            if (copied) copyNote = '；提示词已复制，请到新会话粘贴发送';
+          }
           pushToast(
-            `${fallback.prompted ? '已创建修复会话' : '修复会话已创建（提示词未发送）'}${opened ? '并打开' : ` ${fallback.sessionId}，请在左侧会话列表打开`}。插件 Host 版本较旧，重启 DSH 可启用完整模式`,
+            `${fallback.prompted ? '已创建修复会话' : '修复会话已创建（提示词未发送）'}${opened ? '并打开' : ` ${fallback.sessionId}，请在左侧会话列表打开`}` +
+            `${copyNote}。插件 Host 版本较旧，重启 DSH 可启用完整模式`,
             fallback.prompted ? 'success' : 'warn',
           );
         }

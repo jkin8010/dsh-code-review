@@ -122,7 +122,10 @@ const cleanups = [];
 const mockRemote = {
   session: {
     create: async () => ({ ok: true, value: { sessionId: 'session-fallback-fix' } }),
-    prompt: async () => ({ ok: true, value: { accepted: true } }),
+    prompt: async (request) => {
+      window.__FIX_PROMPT__ = request;
+      return { ok: true, value: { accepted: true } };
+    },
   },
 };
 const ctx = {
