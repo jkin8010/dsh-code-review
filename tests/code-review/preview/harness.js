@@ -195,6 +195,9 @@ async function boot() {
   if (!mainComponent) throw new Error("[preview] client did not register the 'main' slot");
 
   document.documentElement.dataset.theme = theme;
+  document.documentElement.setAttribute('data-ds-theme-source', theme);
+  if (theme === 'dark') document.body.setAttribute('data-ds-dark-theme', '');
+  else document.body.removeAttribute('data-ds-dark-theme');
   document.documentElement.dataset.lang = lang;
 
   window.__PREVIEW__ = {

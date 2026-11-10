@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     // 1. 常量 / 字典
     // =====================================================================
 
-    const PLUGIN_VERSION = '0.8.1';
+    const PLUGIN_VERSION = '0.8.2';
     const ENDPOINT = 'code-review';
     const PANEL_ID = 'code-review';
     const PANEL_ORDER = 24;
@@ -4079,27 +4079,59 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       }
     }
 
+    /**
+     * Read the shell palette from the attributes the DSH Web UI actually sets:
+     * `body[data-ds-dark-theme]` for the dark base palette and
+     * `html[data-ds-theme-source]` for light/dark/system. The legacy
+     * `html[data-theme]` is kept for the preview harness.
+     */
+    function detectShellTheme() {
+      try {
+        if (document.body && document.body.hasAttribute('data-ds-dark-theme')) return 'dark';
+        const source = document.documentElement.getAttribute('data-ds-theme-source');
+        if (source === 'light' || source === 'dark') return source;
+        const scheme = document.documentElement.style.colorScheme;
+        if (scheme === 'light' || scheme === 'dark') return scheme;
+        const legacy = document.documentElement.dataset.theme;
+        if (legacy === 'light' || legacy === 'dark') return legacy;
+        if (window.matchMedia) return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      } catch {
+        /* fall through */
+      }
+      return 'dark';
+    }
+
     /** Follow the DSH shell theme unless the user pinned dark/light here. */
     function useCrTheme() {
       const [setting, setSetting] = React.useState(readThemeSetting);
-      const [shellTheme, setShellTheme] = React.useState(() => {
-        try {
-          return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
-        } catch {
-          return 'dark';
-        }
-      });
+      const [shellTheme, setShellTheme] = React.useState(detectShellTheme);
       React.useEffect(() => {
+        const sync = () => setShellTheme(detectShellTheme());
         let observer = null;
+        let media = null;
         try {
-          observer = new MutationObserver(() => {
-            setShellTheme(document.documentElement.dataset.theme === 'light' ? 'light' : 'dark');
+          observer = new MutationObserver(sync);
+          observer.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['data-theme', 'data-ds-theme-source', 'style'],
           });
-          observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+          if (document.body) {
+            observer.observe(document.body, { attributes: true, attributeFilter: ['data-ds-dark-theme'] });
+          }
         } catch {
           observer = null;
         }
-        return () => observer?.disconnect();
+        try {
+          media = window.matchMedia('(prefers-color-scheme: dark)');
+          media.addEventListener?.('change', sync);
+        } catch {
+          media = null;
+        }
+        sync();
+        return () => {
+          observer?.disconnect();
+          media?.removeEventListener?.('change', sync);
+        };
       }, []);
       const update = React.useCallback((next) => {
         if (!THEME_MODES.includes(next)) return;
