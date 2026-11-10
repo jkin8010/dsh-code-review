@@ -98,6 +98,12 @@ ocr llm test           # 验证连通性
 - 「从信息流角度 review 当前项目的消息链路」
 - 「查看最近一次评审的详情」
 
+复制下面这句即可一次展开完整 review：
+
+```text
+用代码评审中心评审当前项目：先看项目架构，再评审 plugins/dsh-code-review/host 模块，最后从信息流角度 review 消息链路；high 以下可以略过。
+```
+
 Agent 会调用 `code_review` → `start`（默认等待评审完成）→ 在对话里返回问题摘要与 findings；完整分组、代码建议和覆盖率仍在侧栏「代码评审中心」查看。
 
 工具参数（Agent 自动填写，也可直接要求）：
