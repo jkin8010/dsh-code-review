@@ -39,7 +39,9 @@
     "plugins/dsh-code-review/icon.svg",
     "plugins/dsh-code-review/README.md",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "plugins/dsh-code-review/README.zh.md",
+    "README.zh.md"
   ],
   "engines": {
     "node": ">=22"

@@ -1,9 +1,11 @@
-# dsh-code-review — 实现契约 v1
+# dsh-code-review — Implementation Contract v1
 
-插件包：`plugins/dsh-code-review`（`@jkin8010/dsh-code-review`）。
-基于 [alibaba/open-code-review](https://github.com/alibaba/open-code-review)（`ocr` CLI v1.13+）。
-左侧栏入口 `sidebar.panellist`（id `code-review`）+ 整页 `main`（key `code-review`）。
-Client 通过认证 RPC 取数据，Host 端持有全部 I/O（git / ocr 子进程 / 持久化）。
+English | [简体中文](CODE-REVIEW-CONTRACT.zh.md)
+
+Plugin package: `plugins/dsh-code-review` (`@jkin8010/dsh-code-review`).
+Built on [alibaba/open-code-review](https://github.com/alibaba/open-code-review) (`ocr` CLI v1.13+).
+Sidebar entry `sidebar.panellist` (id `code-review`) + full page `main` (key `code-review`).
+The client fetches data over authenticated RPC; the host owns all I/O (git / ocr subprocesses / persistence).
 
 ```js
 // client
@@ -12,66 +14,66 @@ connection.rpc.call('/api', 'code-review', { method, payload }, undefined)
 //       <- { type:'server-response', rpcId, result:{ ok, value|error } }
 ```
 
-> 本契约是 **唯一事实源**。所有模块按这里的形状生产/消费数据；改字段先改本文件。
-> 快照必须是纯 JSON（禁止函数、循环引用、undefined）。所有时间用 ISO-8601 字符串（`new Date().toISOString()`）。
+> This contract is the **single source of truth**. Every module produces/consumes data in the shapes defined here; change this file first when changing fields.
+> Snapshots must be plain JSON (no functions, circular references or undefined). All times are ISO-8601 strings (`new Date().toISOString()`).
 
 ---
 
-## 1. 评审类型
+## 1. Review types
 
-| type | 中文 | OCR 命令 | 必要 scope | 说明 |
+| type | Name | OCR command | Required scope | Notes |
 |---|---|---|---|---|
-| `workspace` | 当前改动 | `ocr review`（staged+unstaged+untracked） | — | 需要 git 仓库；工作区干净时给出「无改动」 |
-| `commit` | 单次提交 | `ocr review --commit <sha>` | `commit` | |
-| `range` | 分支对比 | `ocr review --from <a> --to <b>` | `from`,`to` | merge-base 语义 |
-| `architecture` | 项目架构 | `ocr scan --path <anchors>` + 本地架构分析 | — | 全项目模块依赖图 / 环 / 层次 / 热点 |
-| `module` | 代码模块 | `ocr scan --path <paths>` + 本地模块分析 | `paths[]` | 指定目录/文件 |
-| `flow` | 信息流 | `ocr scan --path <flow files>` + 本地信息流分析 | `paths[]`（可选） | 入口→服务→数据 业务链路 |
+| `workspace` | Current changes | `ocr review` (staged+unstaged+untracked) | — | Requires a git repository; reports "no changes" when the working tree is clean |
+| `commit` | Single commit | `ocr review --commit <sha>` | `commit` | |
+| `range` | Branch comparison | `ocr review --from <a> --to <b>` | `from`,`to` | merge-base semantics |
+| `architecture` | Project architecture | `ocr scan --path <anchors>` + local architecture analysis | — | Whole-project module dependency graph / cycles / layers / hotspots |
+| `module` | Code module | `ocr scan --path <paths>` + local module analysis | `paths[]` | Specified directory/files |
+| `flow` | Information flow | `ocr scan --path <flow files>` + local information-flow analysis | `paths[]` (optional) | Entry→service→data business chain |
 
-`engine`：
-- `ocr`：OCR 自带 LLM（`OCR_LLM_*` / `~/.opencodereview/config.json`），跑 `ocr review/scan`；
-- `delegate`：**委托模式**——OCR 仍负责文件选取与规则解析，评审由 DSH 当前会话模型完成
-  （`ctx.llm.stream` + `ctx.agentDefaultModel.currentSelection()`），不需要 OCR 的 API Key；
-- `structural`：离线结构分析，始终可用。
+`engine`:
+- `ocr`: OCR's own LLM (`OCR_LLM_*` / `~/.opencodereview/config.json`), runs `ocr review/scan`;
+- `delegate`: **delegation mode** — OCR still handles file selection and rule resolution, while the review itself is
+  performed by the DSH current-session model (`ctx.llm.stream` + `ctx.agentDefaultModel.currentSelection()`); no OCR API key needed;
+- `structural`: offline structural analysis, always available.
 
-配置 `engine=auto` 时：OCR LLM 已配置 → `ocr`；否则 DSH 模型可用 → `delegate`；否则 `structural`。
-模型评审不可用时自动降级为 structural，并在 summary.notes 里注明。
+With `engine=auto`: OCR LLM configured → `ocr`; otherwise DSH model available → `delegate`; otherwise `structural`.
+When model review is unavailable it automatically degrades to structural and notes this in summary.notes.
 
 ---
 
-## 2. Host 模块接口（文件级契约）
+## 2. Host module interfaces (file-level contract)
 
-### `host/config.js`（Lead）
+### `host/config.js` (Lead)
 
 ```js
-export const DEFAULTS // 见文件
+export const DEFAULTS // see file
 export function normalizeConfig(rawConfig, { hostCwd } = {}) -> Config
-export function resolveOcrEnv(config) -> { [env]: string }      // OCR_LLM_URL / OCR_LLM_TOKEN / OCR_LLM_MODEL 等
-export function findOcrBinary(config) -> string                  // 绝对路径或 'ocr'
+export function resolveOcrEnv(config) -> { [env]: string }      // OCR_LLM_URL / OCR_LLM_TOKEN / OCR_LLM_MODEL etc.
+export function findOcrBinary(config) -> string                  // absolute path or 'ocr'
 export function projectId(path) -> 'p-<8hex>'
 export function projectName(path) -> string
 export function expandHome(p) -> string
 ```
 
-`Config`（normalize 后）：
+`Config` (after normalize):
 ```js
 {
   enabled: true,
-  pollSeconds: 2,                 // 前端轮询
-  projectRoots: [],               // 自动发现项目（含 .git 的子目录）
-  extraProjects: [],              // 额外纳入的项目路径（可非 Git，用于模块/架构/信息流评审）
-  projectDepth: 2,                // projectRoots 目录扫描深度（1-3）
-  maxProjects: 40,                // 最多纳入的项目数
-  // 运行时还会自动并入：DSH 工作区、已评审项目、UI 添加的项目（persist 在 stateDir/projects.json）
-  defaultProjectPath: '',         // 空 = 最近提交的已发现项目（或 projectRoots 首项）
-  excludeProjects: [],            // 目录名或路径前缀
+  pollSeconds: 2,                 // frontend polling
+  projectRoots: [],               // auto-discovered projects (subdirectories containing .git)
+  extraProjects: [],              // extra project paths to include (may be non-Git, used for module/architecture/flow reviews)
+  projectDepth: 2,                // directory scan depth for projectRoots (1-3)
+  maxProjects: 40,                // maximum number of projects to include
+  // at runtime these are also merged in: the DSH workspace, already-reviewed projects, projects added in the UI (persisted in stateDir/projects.json)
+  defaultProjectPath: '',         // empty = the most recently committed discovered project (or the first projectRoots entry)
+  excludeProjects: [],            // directory names or path prefixes
   stateDir: '~/.dsh/code-review',
   engine: 'auto',                 // auto | ocr | structural
   maxJobs: 200,
   heatmapDays: 365,
-  gitScanLimit: 4000,             // git log 最多读取提交数
+  gitScanLimit: 4000,             // max commits read from git log
   ocr: {
-    command: '',                  // 空 = 自动探测
+    command: '',                  // empty = auto-detect
     provider: '', model: '',
     llmUrl: '', llmToken: '', llmTokenFile: '',
     effort: 'medium', concurrency: 8, timeoutMin: 15,
@@ -81,76 +83,76 @@ export function expandHome(p) -> string
 }
 ```
 
-### `host/shared.js`（Lead）
+### `host/shared.js` (Lead)
 
 ```js
 export const SEVERITIES = ['critical','high','medium','low']
 export const CATEGORIES = ['bug','security','performance','maintainability','test','style','documentation','other']
 export function nowIso() -> string
 export function errorText(e) -> string
-export function hash(text, len=12) -> string            // sha1 hex 截断
-export function slug(text) -> string                    // 文件名安全
-export function dateKey(ts) -> 'YYYY-MM-DD'             // 本地时区
+export function hash(text, len=12) -> string            // truncated sha1 hex
+export function slug(text) -> string                    // filename-safe
+export function dateKey(ts) -> 'YYYY-MM-DD'             // local timezone
 export function addDays(dateKey, n) -> 'YYYY-MM-DD'
 export function dayList(from, to) -> string[]
 export function severityRank(sev) -> number
 export function normalizeSeverity(v) -> 'critical'|'high'|'medium'|'low'
 export function normalizeCategory(v) -> CATEGORIES[number]
-export function finding(input) -> Finding               // 统一 id/fingerprint/字段
+export function finding(input) -> Finding               // unified id/fingerprint/fields
 export function countFindings(findings) -> {critical,high,medium,low,total}
 export function countBy(findings, key) -> [{key,count}]
 export function trimText(text, max) -> string
-export function readJsonFile(path, fallback) -> any     // 容错
+export function readJsonFile(path, fallback) -> any     // fault-tolerant
 export async function atomicWriteJson(path, value) -> void
 export function parseJsonLoose(text) -> any|null
 export function clamp01(n) -> number
-export function pct(a,b) -> number                      // 0..100 整数
+export function pct(a,b) -> number                      // integer 0..100
 ```
 
-`Finding`：
+`Finding`:
 ```js
 {
-  id: 'f-<12hex>',            // 稳定指纹（path+startLine+content 哈希）
+  id: 'f-<12hex>',            // stable fingerprint (hash of path+startLine+content)
   severity: 'critical|high|medium|low',
   category: 'bug|security|performance|maintainability|test|style|documentation|other',
   path: 'src/x.ts',
-  startLine: 0, endLine: 0,   // 0 表示未定位
-  title: '一句话问题（≤120字）',   // 从 content 首句截取或规则标题
-  content: '详细说明（Markdown 纯文本）',
+  startLine: 0, endLine: 0,   // 0 means unlocated
+  title: 'one-line problem (≤120 chars)',   // first sentence of content, or the rule title
+  content: 'detailed explanation (Markdown plain text)',
   suggestionCode: '', existingCode: '', thinking: '',
   source: 'ocr|structural',
-  rule: '',                    // 规则 id / 检测器名
-  module: '',                  // 顶层模块名（用于统计）
+  rule: '',                    // rule id / detector name
+  module: '',                  // top-level module name (for statistics)
 }
 ```
 
-### `host/store.js`（Lead）
+### `host/store.js` (Lead)
 
 ```js
 export function createStore({ dir, maxJobs = 200, logger }) -> Store
 // Store:
 //   await store.init()
-//   store.saveJob(job)                    // 内存 + 异步落盘 jobs/<id>.json
+//   store.saveJob(job)                    // memory + async write to jobs/<id>.json
 //   store.getJob(id) -> Job|null
-//   store.listJobs() -> Job[]             // 新→旧
+//   store.listJobs() -> Job[]             // newest→oldest
 //   store.deleteJob(id) -> boolean
 //   store.getStats() -> Stats
-//   store.recordReview(job)               // 累加 stats（按天）
+//   store.recordReview(job)               // accumulate stats (per day)
 //   store.status() -> { state, path, jobs, error }
 //   await store.flush()
 ```
-落盘：`<stateDir>/jobs/<id>.json`（完整 Job 含 findings）、`<stateDir>/index.json`（摘要数组）、
-`<stateDir>/stats.json`（按天聚合）。写用 tmp+rename，读失败容错。启动只加载 index + stats，findings 按需懒加载。
+Persistence: `<stateDir>/jobs/<id>.json` (full Job including findings), `<stateDir>/index.json` (array of summaries),
+`<stateDir>/stats.json` (per-day aggregates). Writes use tmp+rename, reads are fault-tolerant. On startup only index + stats are loaded; findings are lazy-loaded on demand.
 
-### `host/git.js`（Teammate A）
+### `host/git.js` (Teammate A)
 
 ```js
 export async function discoverProjects({ roots, exclude = [], limit = 24 }) -> ProjectSummary[]
-// 扫描 roots 的直接子目录（含 .git），返回按 lastCommitAt 降序的摘要（不含 heatmap.modules 明细）
+// scans the direct subdirectories of roots (those containing .git), returns summaries sorted by lastCommitAt descending (without heatmap.modules detail)
 
 export async function inspectProject({ repoPath, heatmapDays = 365, moduleDepth = 1, light = false }) -> ProjectView
-// 完整 ProjectView：git 元信息 + 语言统计 + 顶层模块 + 一年热力图
-// light:true 跳过逐文件 LOC（loc 可为 null），仍给 fileCount/moduleCount/heatmap，供项目卡摘要用
+// full ProjectView: git metadata + language stats + top-level modules + one-year heatmap
+// light:true skips per-file LOC (loc may be null), still returns fileCount/moduleCount/heatmap, for project card summaries
 
 export async function gitHeatmap({ repoPath, days = 365 }) -> Heatmap
 export async function moduleTree({ repoPath, depth = 2, maxModules = 60 }) -> ModuleSummary[]
@@ -158,11 +160,11 @@ export async function changedFiles({ repoPath, mode, commit, from, to }) -> { fi
 export async function gitMeta({ repoPath }) -> { kind:'git'|'dir', branch, head, headSubject, committedAt, dirty, remote, error }
 ```
 
-`ProjectView`：
+`ProjectView`:
 ```js
 {
   id:'p-1a2b3c4d', name:'mopng-api', path:'/Users/.../mopng-api', kind:'git',
-  branch:'master', head:'bf9c296', headSubject:'重构 README...', committedAt:'ISO', dirty:false,
+  branch:'master', head:'bf9c296', headSubject:'Refactor README...', committedAt:'ISO', dirty:false,
   remote:'git@github.com:...', language:'Python', fileCount: 42, moduleCount: 6, loc: 8600,
   modules:[{ id:'m-...', name:'mopng', path:'mopng', files:12, loc:2400, lastCommitAt:'ISO',
              lastReviewAt:'ISO|null', reviewCount:3, findings:{critical:0,high:1,medium:2,low:0,total:3}, risk:'low|medium|high' }],
@@ -172,19 +174,19 @@ export async function gitMeta({ repoPath }) -> { kind:'git'|'dir', branch, head,
 }
 ```
 
-`Heatmap`：
+`Heatmap`:
 ```js
 {
-  from:'2025-11-10', to:'2026-11-10', days:[{date:'2026-01-02', commits:3, insertions:120, deletions:30}], // 只含有活动的天？
+  from:'2025-11-10', to:'2026-11-10', days:[{date:'2026-01-02', commits:3, insertions:120, deletions:30}], // only days with activity?
   max: 12, totalCommits: 812, totalInsertions: 42000, totalDeletions: 12000,
   streaks:{ current: 3, longest: 21 }, busiest:{ date:'2026-03-11', commits:12 },
   activeDays: 240
 }
 ```
-> `days` **必须补齐 from→to 每一天**（无活动补 `commits:0,insertions:0,deletions:0`），前端直接画格子。
-> 注意：`git log --numstat` 一次读取，禁止 per-day 调用。
+> `days` **must cover every day from from→to** (fill inactive days with `commits:0,insertions:0,deletions:0`) so the frontend can draw cells directly.
+> Note: read `git log --numstat` in a single pass; per-day invocations are forbidden.
 
-### `host/ocr.js`（Teammate A）
+### `host/ocr.js` (Teammate A)
 
 ```js
 export async function probe({ config, env }) -> { available, version, path, error }
@@ -193,9 +195,9 @@ export async function preview({ projectPath, type, scope, config, env }) -> {
   ok, mode, files:[{path,insertions,deletions,status,willReview,reason}],
   totalInsertions, totalDeletions, reviewable, excluded, error
 }
-// type 映射：workspace|commit|range -> ocr review --preview
-//            module                 -> ocr scan --preview --path <scope.paths>
-//            scan                   -> ocr scan --preview --path <scope.paths|全仓>
+// type mapping: workspace|commit|range -> ocr review --preview
+//               module                 -> ocr scan --preview --path <scope.paths>
+//               scan                   -> ocr scan --preview --path <scope.paths|whole repo>
 export async function runReview({ jobId, projectPath, type, scope, plan, config, env, background, rules, signal, onEvent, onProgress }) -> {
   ok, status, comments:[FindingRaw], summary:{filesReviewed,comments,totalTokens,inputTokens,outputTokens,elapsed},
   projectSummary, warnings:[{type,file,message}], sessionId, manifest, rawOutputPath, stderrTail, error
@@ -203,17 +205,17 @@ export async function runReview({ jobId, projectPath, type, scope, plan, config,
 export async function llmTest({ config, env }) -> { ok, latencyMs, message, error }
 ```
 
-- 参数组装：`review` / `scan`，统一 `--format json --output <tmpfile> --audience human --repo <projectPath>`，
-  `--effort/--concurrency/--timeout/--exclude/--max-tokens/--max-tokens-budget/--background-file`。
-  `architecture`/`flow` 用 `scan`；`module` 用 `scan --path`；`workspace/commit/range` 用 `review`。
-- LLM：`resolveOcrEnv(config)` 注入 `OCR_LLM_URL/OCR_LLM_TOKEN/OCR_LLM_MODEL`（token 只存在 Host 进程）。
-- 进度：JSON 模式下 human 进度写 **stderr**，形如 `[ocr] ...`；解析 `group`/`round`/`token budget`/`Session:`
-  行调用 `onProgress`。stdout 是 JSON 但用 `--output` 落文件，stdout 只做兜底。
-- 取消：`signal.aborted` 时 kill 子进程（SIGTERM→SIGKILL 2s）。
-- 失败分类：`ocr-missing | llm-unconfigured | git | timeout | cancelled | ocr-failed`。
-- 原始输出与 stderr 尾部写 `<stateDir>/artifacts/<jobId>.json|.log`。
+- Argument assembly: `review` / `scan`, always `--format json --output <tmpfile> --audience human --repo <projectPath>`,
+  plus `--effort/--concurrency/--timeout/--exclude/--max-tokens/--max-tokens-budget/--background-file`.
+  `architecture`/`flow` use `scan`; `module` uses `scan --path`; `workspace/commit/range` use `review`.
+- LLM: `resolveOcrEnv(config)` injects `OCR_LLM_URL/OCR_LLM_TOKEN/OCR_LLM_MODEL` (the token exists only in the Host process).
+- Progress: in JSON mode human progress goes to **stderr** as `[ocr] ...`; parse the `group`/`round`/`token budget`/`Session:`
+  lines and call `onProgress`. stdout is JSON but is written via `--output`, so stdout is only a fallback.
+- Cancellation: kill the subprocess when `signal.aborted` (SIGTERM→SIGKILL after 2s).
+- Failure classification: `ocr-missing | llm-unconfigured | git | timeout | cancelled | ocr-failed`.
+- Raw output and the stderr tail are written to `<stateDir>/artifacts/<jobId>.json|.log`.
 
-### `host/analyze.js`（Teammate B）
+### `host/analyze.js` (Teammate B)
 
 ```js
 export async function analyzeArchitecture({ project, files, readFile }) -> ArchAnalysis
@@ -222,25 +224,26 @@ export async function analyzeFlow({ project, files, readFile }) -> FlowAnalysis
 export async function analyzeDiff({ project, files, diffText, readFile }) -> DiffAnalysis
 ```
 
-所有分析返回：
+All analyses return:
 ```js
 {
   findings: Finding[],
-  metrics: {...},                 // 自由结构，前端按需展示
+  metrics: {...},                 // free-form structure, rendered by the frontend as needed
   graph: { nodes:[{id,label,kind,path,files,loc,risk,meta:{}}], edges:[{from,to,kind,count,risk}], cycles:[[id]] } | null,
   summary: { headline, notes:[], stats:{} },
-  activity: [{ ts, level, text }],   // 分析过程可读动态
+  activity: [{ ts, level, text }],   // readable progress of the analysis
 }
 ```
-- `architecture`：模块依赖图（JS/TS import/require、Python import/from、Go import、Java import、Rust use、PHP use/require），
-  Tarjan 强连通找环，不稳定依赖（稳定→不稳定）、god module、孤儿模块、缺测试、跨层反向依赖。
-- `module`：文件/函数指标、TODO/FIXME、调试残留、空 catch、危险模式、重复窗口、超大文件。
-- `flow`：入口识别（Express/Koa/FastAPI/Flask/Spring/Go handler/CLI/飞书事件/前端 fetch）→ 服务调用 → 数据访问
-  （SQL/ORM/Redis/队列/外部 HTTP）。findings：缺校验、写路径无事务/幂等、缺鉴权、外部调用无超时/重试、
-  吞异常、敏感信息日志。`graph.nodes[].kind`: `entry|service|data|external`，`edges[].kind`: `call|read|write|emit|http`。
-- 纯 Node 内置模块，零第三方依赖；对每个文件读取设 256KB 上限。
+- `architecture`: module dependency graph (JS/TS import/require, Python import/from, Go import, Java import, Rust use, PHP use/require),
+  Tarjan SCC cycle detection, unstable dependencies (stable→unstable), god modules, orphan modules, missing tests, cross-layer reverse dependencies.
+- `module`: file/function metrics, TODO/FIXME, leftover debug code, empty catch, dangerous patterns, duplicate windows, oversized files.
+- `flow`: entry identification (Express/Koa/FastAPI/Flask/Spring/Go handler/CLI/Feishu events/frontend fetch) → service calls → data access
+  (SQL/ORM/Redis/queue/external HTTP). findings: missing validation, write paths without transactions/idempotency, missing authorization,
+  external calls without timeout/retry, swallowed exceptions, sensitive data in logs. `graph.nodes[].kind`: `entry|service|data|external`,
+  `edges[].kind`: `call|read|write|emit|http`.
+- Pure Node built-in modules, zero third-party dependencies; each file read is capped at 256KB.
 
-### `host/prompts.js`（Lead）
+### `host/prompts.js` (Lead)
 
 ```js
 export function buildBackground({ type, project, scope, analysis, userBackground }) -> string  // Markdown
@@ -248,12 +251,12 @@ export function buildRules({ type, scope, analysis, options }) -> { rules:[{path
 export function buildTitle({ type, project, scope }) -> { title, subtitle }
 ```
 
-### `host/jobs.js`（Lead）
+### `host/jobs.js` (Lead)
 
 ```js
 export function createJobs({ config, env, store, logger, git, ocr, analyze }) -> Jobs
 // Jobs:
-//   await jobs.init()                      // 从 store 恢复；把遗留 running 标记为 failed/interrupted
+//   await jobs.init()                      // restore from store; mark leftover running jobs as failed/interrupted
 //   jobs.start({ projectId|projectPath, type, scope, options }) -> Job
 //   jobs.cancel(id) -> boolean
 //   jobs.retry(id) -> Job
@@ -263,17 +266,17 @@ export function createJobs({ config, env, store, logger, git, ocr, analyze }) ->
 //   jobs.prune()
 //   jobs.dispose()
 ```
-Job 生命周期（`stages`）：
+Job lifecycle (`stages`):
 `resolve → plan → structure → ai → merge → report`
-（无 AI 时 `ai` 标 `skipped`；`workspace` 无改动直接 completed 并给 message。）
-进度：每个 stage 权重 `[5,10,25,50,5,5]`（按启用阶段归一化）；`progress` 0..1；AI 阶段由 `onProgress` 细化。
+(without AI, `ai` is marked `skipped`; a `workspace` run with no changes completes immediately with a message.)
+Progress: each stage weight is `[5,10,25,50,5,5]` (normalized over the enabled stages); `progress` is 0..1; the AI stage is refined by `onProgress`.
 
-### `host/snapshot.js`（Lead）
+### `host/snapshot.js` (Lead)
 
 ```js
 export function createSnapshot({ config, store, jobs, git, ocr, logger }) -> { build(), refreshProjects(), getProject(id), invalidate() }
 ```
-`build()` 必须纯 JSON 且 < 1.5MB（findings 不进 snapshot；只有 `running` job 带最近 20 条 activity）。
+`build()` must be plain JSON and < 1.5MB (findings do not go into the snapshot; only `running` jobs carry the latest 20 activity entries).
 
 ---
 
@@ -286,8 +289,8 @@ export function createSnapshot({ config, store, jobs, git, ocr, logger }) -> { b
     "projectRoots": ["/Users/jkin/workspace/jkin8010"],
     "defaultProjectId": "p-...",
     "pollSeconds": 2, "stateDir": "~/.dsh/code-review",
-    "engineMode": "auto",          // 配置值
-    "enginePlan": "ocr",           // 实际生效：ocr | delegate | structural
+    "engineMode": "auto",          // configured value
+    "enginePlan": "ocr",           // actually in effect: ocr | delegate | structural
     "ocrBin": "/Users/.../ocr", "ocrVersion": "open-code-review v1.13.6",
     "llmConfigured": true, "llmDelegate": false,
     "llmProvider": "deepseek", "llmModel": "deepseek-chat",
@@ -296,15 +299,15 @@ export function createSnapshot({ config, store, jobs, git, ocr, logger }) -> { b
   "health": {
     "ocr":   { "state": "ok",             // ok | missing | unconfigured | error
                "version": "v1.13.6", "path": "...", "error": null, "checkedAt": "ISO" },
-    "llm":   { "state": "configured",     // configured(OCR LLM) | delegate(DSH 模型) | unconfigured | unknown | error
+    "llm":   { "state": "configured",     // configured(OCR LLM) | delegate(DSH model) | unconfigured | unknown | error
                "provider": "deepseek", "model": "deepseek-chat", "source": "config|env|file|dsh|none",
                "delegateAvailable": true, "delegateProvider": "deepseek-account", "delegateModel": "deepseek-flash",
                "error": null, "checkedAt": "ISO" },
     "git":   { "state": "ok", "projects": 8, "error": null, "checkedAt": "ISO" },
     "store": { "state": "ok", "path": "...", "jobs": 24, "error": null }
   },
-  "project": ProjectView,              // 当前选中项目（完整，含一年 heatmap + modules）
-  "projects": ProjectView[],           // 摘要（heatmap 只留 totals/streaks/spark(90天提交数数组)，modules 只留 top 6），按 lastCommitAt 排序
+  "project": ProjectView,              // currently selected project (complete, including one-year heatmap + modules)
+  "projects": ProjectView[],           // summaries (heatmap keeps only totals/streaks/spark (array of 90 days of commit counts), modules keep only top 6), sorted by lastCommitAt
   "overview": {
     "reviewsTotal": 32, "reviews7d": 9, "reviewsToday": 2,
     "running": 1, "queued": 0,
@@ -312,11 +315,11 @@ export function createSnapshot({ config, store, jobs, git, ocr, logger }) -> { b
     "filesReviewed": 214, "tokens": 318000, "modulesCovered": 18, "projectsCount": 8,
     "lastReviewAt": "ISO", "streakDays": 4, "successRate": 0.93
   },
-  "jobs": Job[],                        // 新→旧，最多 40；含 stages/activity，不含 findings
+  "jobs": Job[],                        // newest→oldest, at most 40; includes stages/activity, excludes findings
   "activity": [{ "id": "a-...", "ts": "ISO", "kind": "review|finding|system|project",
                  "level": "info|success|warn|error", "text": "...", "jobId": "rv-...", "projectId": "p-..." }],
   "stats": {
-    "days": [{ "date": "2026-11-09", "reviews": 2, "findings": 7, "critical": 1, "files": 21, "tokens": 41000 }], // 365 天补齐
+    "days": [{ "date": "2026-11-09", "reviews": 2, "findings": 7, "critical": 1, "files": 21, "tokens": 41000 }], // 365 days, gap-filled
     "byType": [{ "type": "workspace", "count": 12 }],
     "bySeverity": [{ "severity": "high", "count": 12 }],
     "byCategory": [{ "category": "bug", "count": 20 }],
@@ -325,40 +328,40 @@ export function createSnapshot({ config, store, jobs, git, ocr, logger }) -> { b
                      "lastAt": "ISO", "risk": "high" }],
     "recentProjects": [{ "projectId": "p-...", "name": "mopng-api", "path": "...", "lastAt": "ISO",
                          "reviewCount": 6, "findings": 18, "health": "ok|dirty|error" }],
-    "heatmap": Heatmap                  // 跨项目合并（commits + reviews + findings 每天）
+    "heatmap": Heatmap                  // merged across projects (commits + reviews + findings per day)
   }
 }
 ```
 
-`Job`（摘要，snapshot 用）：
+`Job` (summary, used by the snapshot):
 ```js
 {
   id:'rv-20261110-092500-3f9a', seq:32,
   projectId:'p-...', projectName:'mopng-api', projectPath:'/Users/.../mopng-api',
-  type:'workspace', title:'当前改动评审 · mopng-api', subtitle:'review · 12 files / +340 -86',
+  type:'workspace', title:'Current changes review · mopng-api', subtitle:'review · 12 files / +340 -86',
   scope:{ paths:[], commit:'', from:'', to:'', flowId:'' },
   engine:'ocr|delegate|structural',
   engineDetail:{ engineMode:'ocr', ocr:true, delegate:false, llmConfigured:true,
                  provider:'deepseek', model:'deepseek-chat' },
   options:{ effort:'medium', background:'', exclude:'', maxTokensBudget:0 },
   status:'queued|running|completed|failed|cancelled',
-  stage:{ key:'ai', label:'AI 评审', index:3, total:6 },
+  stage:{ key:'ai', label:'AI review', index:3, total:6 },
   progress:0.62,
   createdAt:'ISO', startedAt:'ISO|null', finishedAt:'ISO|null', durationMs:12000|null,
   counts:{ filesPlanned:12, filesReviewed:8, findings:5,
            bySeverity:{critical:0,high:2,medium:2,low:1}, byCategory:{bug:3,...}, tokens:41000, modules:3 },
-  stages:[{ key:'plan', label:'选取文件', status:'done', startedAt:'ISO', finishedAt:'ISO', detail:'12 个文件' }],
-  activity:[{ ts:'ISO', level:'info', text:'OCR 已完成 3/5 组' }],   // 最多 40
+  stages:[{ key:'plan', label:'Select files', status:'done', startedAt:'ISO', finishedAt:'ISO', detail:'12 files' }],
+  activity:[{ ts:'ISO', level:'info', text:'OCR finished 3/5 groups' }],   // at most 40
   plan:{ files:[...], totalInsertions:340, totalDeletions:86, reviewable:10, excluded:2 },
-  summary:{ headline:'发现 5 个问题：2 高 2 中', projectSummary:'', notes:[],
+  summary:{ headline:'Found 5 problems: 2 high, 2 medium', projectSummary:'', notes:[],
             coverage:{ reviewable:10, reviewed:8, failed:1, waived:0 } },
   error:null, artifacts:{ rawOutputPath:'...', ocrSessionId:'' },
-  graph: { nodes:[], edges:[], cycles:[] } | null,   // architecture / flow / module 才有（Graph）
-  summary: { ..., modules:['mopng','tests'] }        // 用于「热点模块」统计
+  graph: { nodes:[], edges:[], cycles:[] } | null,   // only for architecture / flow / module (Graph)
+  summary: { ..., modules:['mopng','tests'] }        // used for "hot module" statistics
 }
 ```
 
-### `job` RPC 返回
+### `job` RPC return
 
 ```js
 { job: Job, findings: Finding[], files: [{path, findings, severityMax}], graph: Graph|null }
@@ -366,117 +369,117 @@ export function createSnapshot({ config, store, jobs, git, ocr, logger }) -> { b
 
 ---
 
-## 4. RPC 方法
+## 4. RPC methods
 
-| method | payload | 返回 |
+| method | payload | Returns |
 |---|---|---|
-| `snapshot` | `{ projectId? }`（传则切换当前项目） | Snapshot |
+| `snapshot` | `{ projectId? }` (switches the current project when provided) | Snapshot |
 | `job` | `{ id, includeFindings?:true }` | `{job, findings, files, graph}` |
 | `start` | `{ projectId?, projectPath?, type, scope?, options? }` | `{ job }` |
 | `cancel` | `{ id }` | `{ ok, job }` |
 | `retry` | `{ id }` | `{ job }` |
 | `delete` | `{ id }` | `{ ok }` |
 | `project` | `{ projectId?, projectPath?, refresh? }` | `{ project: ProjectView }` |
-| `finding.resolve` | `{ jobId, key, resolved? }` | `{ job, resolutions, resolvedCount }`；持久化“已修复/撤销”标记（key 由 `job` 返回的 findings[].key 提供） |
-| `fix.create` | `{ jobId }` | `{ sessionId, jobId, prompted, findings, title?, projectName?, error? }`；在项目目录新建会话并发送修复提示词 |
-| `project.browse` | `{ path? }` | `{ path, parent, roots:[{name,path}], entries:[{name,path,hidden}] }`；内置目录浏览器，任意环境可用 |
-| `project.add` | `{ path }`（绝对路径，Git 或普通目录） | `{ project, snapshot }`，持久化 + 设为当前 |
-| `project.remove` | `{ path }` | `{ ok, snapshot }`（已评审项目保留，仅移出「已添加」） |
+| `finding.resolve` | `{ jobId, key, resolved? }` | `{ job, resolutions, resolvedCount }`; persists the "fixed/undone" mark (the key comes from `findings[].key` returned by `job`) |
+| `fix.create` | `{ jobId }` | `{ sessionId, jobId, prompted, findings, title?, projectName?, error? }`; creates a new session in the project directory and sends the fix prompt |
+| `project.browse` | `{ path? }` | `{ path, parent, roots:[{name,path}], entries:[{name,path,hidden}] }`; built-in directory browser, works in any environment |
+| `project.add` | `{ path }` (absolute path, Git or a plain directory) | `{ project, snapshot }`, persisted + made current |
+| `project.remove` | `{ path }` | `{ ok, snapshot }` (already-reviewed projects are kept, only removed from the "added" set) |
 | `graph` | `{ projectId?, projectPath?, kind:'architecture'\|'flow' }` | `{ graph, summary, findings }` |
 | `refresh` | `{ scope?:'projects'\|'all' }` | Snapshot |
 | `llmTest` | `{}` | `{ ok, latencyMs, message, error }` |
 | `ping` | `{}` | `{ ok, at }` |
 
-错误：`{ ok:false, error:{ code:'code-review/<slug>', message } }`，不抛异常给客户端。
+Errors: `{ ok:false, error:{ code:'code-review/<slug>', message } }`; never throw at the client.
 
-### 斜杠命令 `code-review`
+### Slash command `code-review`
 
-Host 通过 `ctx.commands.register` 注册全局命令：
+The Host registers a global command through `ctx.commands.register`:
 
 ```text
-/code-review <changes|commit|range|architecture|module|workflow|fix|list|status|help> [@项目路径] [选项]
-选项：--fix --async --project <path> --effort <low|medium|high> --background <text> --exclude <globs> --budget <n>
+/code-review <changes|commit|range|architecture|module|workflow|fix|list|status|help> [@project path] [options]
+Options: --fix --async --project <path> --effort <low|medium|high> --background <text> --exclude <globs> --budget <n>
 ```
-- `@path` / `--project`：先用 `snapshot.addProjectPath()` 加入项目（持久化），再用 `jobs.start` 评审
-- 默认等待评审结束（≤10min）并返回摘要/findings；`--fix` 调 `createFixSessionForJob`
-- handler 返回 `{ kind:'success'|'error', text }`；解析失败返回错误 + 用法
+- `@path` / `--project`: first add the project with `snapshot.addProjectPath()` (persisted), then review with `jobs.start`
+- By default it waits for the review to finish (≤10min) and returns the summary/findings; `--fix` calls `createFixSessionForJob`
+- The handler returns `{ kind:'success'|'error', text }`; a parse failure returns an error plus the usage text
 
-### 模型工具 `code_review`
+### Model tool `code_review`
 
-Host 通过 `ctx.tools.register` 注册（无 tools 服务的 profile 自动跳过），用于项目对话内触发评审：
+The Host registers it through `ctx.tools.register` (profiles without a tools service skip it automatically), so reviews can be triggered from a project conversation:
 
 ```js
 {
   name: 'code_review',
   parameters: {
     action: 'start|status|detail|list',        // required
-    project_path?: string,                     // 省略 = 当前会话 cwd
+    project_path?: string,                     // omitted = current session cwd
     type?: 'workspace|commit|range|architecture|module|flow',
     scope?: { paths?: string[], commit?, from?, to? },
     options?: { effort?, background?, exclude?, max_tokens_budget? },
-    wait?: boolean,                            // start 默认 true，等待完成（≤12min）
+    wait?: boolean,                            // start defaults to true, waits for completion (≤12min)
     job_id?: string, severity?: string, limit?: number,
   },
   output: { ok, action, job, findings?, files?, jobs?, error?, timedOut?, cancelled? }
 }
 ```
-`start` 直接复用 `jobs.start`，等待完成后用 `jobs.getFull` 返回摘要与 findings；`wait:false` 立即返回任务 id。
-工具输出为纯 JSON，`output.render` 渲染成对话文本；`execute` 内不抛异常，失败以 `ok:false` 返回。
+`start` reuses `jobs.start` directly and, once the run finishes, returns the summary and findings via `jobs.getFull`; `wait:false` returns the task id immediately.
+Tool output is plain JSON, `output.render` renders it as conversation text; `execute` never throws, failures come back as `ok:false`.
 
 ---
 
-## 5. Client UI（Teammate C）
+## 5. Client UI (Teammate C)
 
-单文件 `client.js`，`window.__ModuleLoader__.load({ id, factory(require) })`，只用 `require('react')`。
-入口返回 `{ inject:['slots','connection'], apply(ctx) }`，注册 `sidebar.panellist`（id `code-review`）+ `main`（key `code-review`）。
-Locale：`ctx.get('locale')` + `locale.register('code-review', dict)`，`locale/zh.json` / `locale/en.json` 只放 `meta`。
+Single file `client.js`, `window.__ModuleLoader__.load({ id, factory(require) })`, using only `require('react')`.
+The entry returns `{ inject:['slots','connection'], apply(ctx) }` and registers `sidebar.panellist` (id `code-review`) + `main` (key `code-review`).
+Locale: `ctx.get('locale')` + `locale.register('code-review', dict)`; `locale/zh.json` / `locale/en.json` contain only `meta`.
 
-**页面结构（整页，深色高级数据台）**
+**Page structure (full page, dark high-end data console)**
 
-- HUD：品牌 + 项目切换器（下拉）+ 健康徽章（OCR/LLM/Git）+ 最近动态 + 「新建 Review」主按钮。
-- Tabs：`总览` / `评审` / `项目` / `架构` / `信息流` /（齿轮=设置）。
-- 总览：
-  - 6 个大数字卡（Review 总数、近 7 天、进行中、问题总数、已审文件、覆盖模块），带环比/迷你走势。
-  - **GitHub 风格热力图**：53 周 × 7 天，月份/星期标签、tooltip（日期/提交/增删/评审数/问题数）、
-    色阶（0 到 max 五档）、图例、年份/指标切换（提交 vs 评审 vs 问题）；右侧显示当前连续天数/最长连续/最忙一天。
-  - 实时「评审队列」：running/queued 卡片带 stage 进度条、当前阶段、耗时、activity 滚动；点击进详情。
-  - 「最近 Review」列表：类型徽章、项目、文件数、问题分级、耗时、状态；点击进详情。
-  - 「最近项目」：卡片 + mini 热力图 + 最近评审时间 + 问题数。
-  - 「热点模块」：模块名/项目/评审次数/问题数/风险色条。
-  - 「动态」：时间轴（最近 100），新事件闪入。
-- 评审：全部 job 列表 + 状态/类型/项目筛选 + 搜索；行内展开最近 activity；点击进详情。
-- 详情（页内切换，返回按钮）：标题/类型/项目/引擎/耗时/tokens；阶段时间线（完成/进行/跳过）；
-  summary headline + projectSummary；finding 列表按 severity 分组，支持按 category/文件过滤、搜索；
-  每条 finding：file:line、严重度/类别徽章、内容、代码片段（existing → suggestion 双栏 diff 风格）、
-  「复制建议」；右侧 sticky 概览：问题分布、涉及文件、覆盖率、原始 OCR 会话/session id、重新运行/取消。
-- 项目：项目卡网格（branch/head/dirty/language/模块数/LOC/热力图/最近 review）；选中切换当前项目。
-- 架构：模块依赖图（SVG，节点大小=LOC，颜色=风险，环高亮），右侧指标（模块数/环/最大扇入/不稳定依赖）、
-  module 表（可排序）；点击节点过滤下方 findings。
-- 信息流：入口→服务→数据 三列/泳道图（SVG 连线，风险边高亮），点节点看关联文件与 findings；列出 flow 摘要。
-- 新建 Review 弹层：项目、6 种类型卡（推荐/说明/预计范围）、scope 输入（commit/from-to/模块路径多选/背景说明/
-  effort/engine/exclude/budget），提交后立即出现在队列。
-- 空态/加载态/错误态齐全；轮询失败保留最后好数据并降级显示，指数退避。
-- 设置抽屉：显示 OCR 路径/版本、LLM 配置状态与配置命令、项目根目录、状态目录、轮询间隔、热力图年份。
+- HUD: brand + project switcher (dropdown) + health badges (OCR/LLM/Git) + latest activity + the "New Review" primary button.
+- Tabs: `Overview` / `Reviews` / `Projects` / `Architecture` / `Flow` / (gear = settings).
+- Overview:
+  - 6 large metric cards (total reviews, last 7 days, in progress, total findings, files reviewed, modules covered), with period-over-period deltas / mini sparklines.
+  - **GitHub-style heatmap**: 53 weeks × 7 days, month/weekday labels, tooltip (date/commits/insertions and deletions/review count/finding count),
+    color scale (5 buckets from 0 to max), legend, year/metric switch (commits vs reviews vs findings); the right side shows the current streak/longest streak/busiest day.
+  - Live "review queue": running/queued cards with a stage progress bar, current stage, elapsed time, scrolling activity; click to open details.
+  - "Recent reviews" list: type badge, project, file count, severity breakdown, elapsed time, status; click to open details.
+  - "Recent projects": cards + mini heatmap + last review time + finding count.
+  - "Hot modules": module name/project/review count/finding count/risk color bar.
+  - "Activity": timeline (latest 100), new events flash in.
+- Reviews: all jobs list + status/type/project filters + search; inline expand of recent activity; click to open details.
+- Details (in-page switch, back button): title/type/project/engine/elapsed/tokens; stage timeline (done/running/skipped);
+  summary headline + projectSummary; findings grouped by severity, filterable by category/file, with search;
+  per finding: file:line, severity/category badges, content, code snippet (existing → suggestion, two-column diff style),
+  "Copy suggestion"; a sticky overview on the right: finding distribution, files touched, coverage, raw OCR session/session id, re-run/cancel.
+- Projects: project card grid (branch/head/dirty/language/module count/LOC/heatmap/last review); selecting one switches the current project.
+- Architecture: module dependency graph (SVG, node size = LOC, color = risk, cycles highlighted), metrics on the right (module count/cycles/max fan-in/unstable dependencies),
+  module table (sortable); clicking a node filters the findings below.
+- Flow: entry→service→data three-column/swimlane diagram (SVG edges, risky edges highlighted); click a node to see related files and findings; flow summaries listed.
+- New Review modal: project, 6 type cards (recommended/description/estimated scope), scope inputs (commit/from-to/module path multi-select/background note/
+  effort/engine/exclude/budget); it appears in the queue immediately after submitting.
+- Empty/loading/error states are all covered; when polling fails the last good data is kept and displayed degraded, with exponential backoff.
+- Settings drawer: shows OCR path/version, LLM configuration state and configuration command, project roots, state directory, polling interval, heatmap year.
 
-**视觉**：深色（#0a0f1a 底），玻璃卡片细边框，主色青绿 #35e0c8，严重度色 critical #ff5d6c / high #ff8f4d /
-medium #ffd166 / low #6ea8fe；字体 system-ui + ui-monospace；圆角 12-16；克制的渐变与光晕；
-running 用呼吸点 + 进度流动；数字 count-up；热力图格子入场 stagger；不堆砌霓虹。
+**Visual**: dark (#0a0f1a base), glass cards with thin borders, primary teal #35e0c8, severity colors critical #ff5d6c / high #ff8f4d /
+medium #ffd166 / low #6ea8fe; typefaces system-ui + ui-monospace; radii 12-16; restrained gradients and glows;
+running uses a breathing dot + flowing progress; number count-up; heatmap cells stagger in; no neon pile-up.
 
-**预览自检**：`tests/code-review/preview/` 用 mock Snapshot 渲染 client.js（模拟 `__ModuleLoader__`/connection/slots/locale），
-Playwright 截图到 `docs/screenshots/code-review-*.png`，并做关键断言（无 console error、热力图 371 格、详情可打开等）。
+**Preview self-check**: `tests/code-review/preview/` renders client.js with a mock Snapshot (simulating `__ModuleLoader__`/connection/slots/locale),
+Playwright screenshots to `docs/screenshots/code-review-*.png`, plus key assertions (no console errors, 371 heatmap cells, details open, etc.).
 
 ---
 
-## 6. 文件归属 / 并发约定
+## 6. File ownership / concurrency conventions
 
-| 路径 | Owner |
+| path | Owner |
 |---|---|
 | `plugins/dsh-code-review/{index.js,package.json,cordis.patch.yml,icon.svg,README.md}` | Lead |
 | `plugins/dsh-code-review/host/{config,shared,store,snapshot,jobs,prompts}.js` | Lead |
 | `plugins/dsh-code-review/host/{git,ocr}.js` | A |
 | `plugins/dsh-code-review/host/analyze.js` | B |
 | `plugins/dsh-code-review/{client.js,locale/*.json}` + `tests/code-review/preview/**` | C |
-| `tests/code-review/{git-ocr,analyze}*.mjs` | A/B 各自 |
-| `docs/CODE-REVIEW-CONTRACT.md` | Lead（别人只读） |
+| `tests/code-review/{git-ocr,analyze}*.mjs` | A/B each |
+| `docs/CODE-REVIEW-CONTRACT.md` | Lead (others read-only) |
 
-改共享文件前先在任务板留言。只允许在归属文件内写。
+Leave a note on the task board before changing shared files. Only write inside the files you own.

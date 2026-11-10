@@ -1,62 +1,67 @@
-# 代码评审中心（@jkin8010/dsh-code-review）
+# Code Review Center (@jkin8010/dsh-code-review)
 
-DSH 左侧栏入口 + 整页**代码评审工作台**：把 [alibaba/open-code-review](https://github.com/alibaba/open-code-review)
-（`ocr` CLI）的 AI 评审能力、仓库本地结构分析和评审历史，汇成一屏可操作、可追踪的评审中心。
+English | [简体中文](README.zh.md)
 
-支持四类评审：**当前项目改动 / 指定提交 / 分支对比**、**项目架构**、**代码模块**、**信息流业务工作流**。
-每个评审都有实时阶段进度与动态流，点开即可查阅按严重度分组的逐条发现、代码建议 diff 与覆盖率；
-总览页用 GitHub 风格热力图呈现最近一年的提交与评审节奏，并统计最近评审过的项目与热点模块。
+A DSH sidebar entry plus a full-page **code review workbench**: it brings the AI review capabilities of
+[alibaba/open-code-review](https://github.com/alibaba/open-code-review) (the `ocr` CLI), local repository structural analysis
+and review history together into one actionable, traceable review center.
 
-![评审中心总览](../../docs/screenshots/code-review-overview.png)
-![评审详情](../../docs/screenshots/code-review-detail.png)
-![项目架构图谱](../../docs/screenshots/code-review-architecture.png)
-![信息流业务链路](../../docs/screenshots/code-review-flow.png)
-![最近评审](../../docs/screenshots/code-review-reviews.png)
-![项目与模块统计](../../docs/screenshots/code-review-projects.png)
-![新建评审](../../docs/screenshots/code-review-launch.png)
-![设置与引擎状态](../../docs/screenshots/code-review-settings.png)
+Four review types are supported: **current project changes / a specific commit / branch comparison**, **project architecture**,
+**code modules**, and **business data-flow workflows**.
+Every review has live stage progress and an activity stream; open one to read the per-finding results grouped by severity,
+the suggested-code diffs and the coverage;
+the overview page shows the past year's commit and review rhythm as a GitHub-style heatmap, and summarizes the projects and hotspot modules reviewed recently.
 
-> 实现契约见 [docs/CODE-REVIEW-CONTRACT.md](../../docs/CODE-REVIEW-CONTRACT.md)，
-> 交付与验收记录见 [docs/CODE-REVIEW-DELIVERY.md](../../docs/CODE-REVIEW-DELIVERY.md)。
+![Code review center overview](../../docs/screenshots/code-review-overview.png)
+![Review details](../../docs/screenshots/code-review-detail.png)
+![Project architecture graph](../../docs/screenshots/code-review-architecture.png)
+![Business data-flow pipeline](../../docs/screenshots/code-review-flow.png)
+![Recent reviews](../../docs/screenshots/code-review-reviews.png)
+![Project and module stats](../../docs/screenshots/code-review-projects.png)
+![New review](../../docs/screenshots/code-review-launch.png)
+![Settings and engine status](../../docs/screenshots/code-review-settings.png)
 
-> 截图来自 `tests/code-review/preview/` 的独立预览 harness（加载真实 `client.js` + 契约 mock 数据）。
+> The implementation contract is documented in [docs/CODE-REVIEW-CONTRACT.md](../../docs/CODE-REVIEW-CONTRACT.md),
+> and the delivery and acceptance records in [docs/CODE-REVIEW-DELIVERY.md](../../docs/CODE-REVIEW-DELIVERY.md).
+
+> The screenshots come from the standalone preview harness in `tests/code-review/preview/` (it loads the real `client.js` with contract mock data).
 
 ---
 
-## 任意项目
+## Any project
 
-- 项目下拉、项目页「添加项目」、新建 Review 的项目下拉都提供「＋ 添加项目路径…」
-- 支持内置文件夹浏览器（列目录 / 上一级 / 选择当前文件夹）或手动输入绝对路径；Git 仓库与普通目录均可
-- 项目来源还会自动并入：projectRoots 向下 2 层发现的仓库、DSH 工作区、已评审项目
+- The project dropdown, "Add project" on the project page, and the project dropdown in New Review all offer "＋ Add project path…"
+- Either the built-in folder browser (list directory / go up one level / select the current folder) or a manually typed absolute path; both Git repositories and plain directories work
+- Project sources are also merged automatically: repositories found 2 levels below projectRoots, DSH workspaces, and already reviewed projects
 
-## 在项目对话里使用
+## Using it from a project conversation
 
-安装/重启后插件注册了模型工具 **`code_review`**，在任意项目会话里直接说：
+After install/restart the plugin registers the model tool **`code_review`**, so in any project session you can just say:
 
-- 「用代码评审中心评审当前项目的架构」
-- 「review 当前改动，只看 high 及以上」
-- 「评审 `host` 模块」
-- 「从信息流角度 review 消息链路」
-- 「查看最近一次评审的详情」
+- "Review the architecture of the current project with the code review center"
+- "Review the current changes, only high and above"
+- "Review the `host` module"
+- "Review the message pipeline from a data-flow perspective"
+- "Show me the details of the most recent review"
 
-Agent 会启动真实评审（默认等待完成）并把问题摘要与 findings 返回在对话里；完整详情在侧栏页面。
-`action=status/detail/list` 可查询进度与历史，`wait:false` 可后台执行后再取结果。
+The Agent starts a real review (waiting for completion by default) and returns the issue summary and findings in the conversation; the full details are on the sidebar page.
+`action=status/detail/list` queries progress and history, and `wait:false` runs in the background so you can fetch the result afterwards.
 
-## Host 模块边界
+## Host module boundaries
 
-| 模块 | 职责 |
+| Module | Responsibility |
 |---|---|
-| `index.js` | 只做装配：配置归一化、服务引用、store/jobs/snapshot 构建、tool/command/RPC 注册、生命周期 |
-| `host/rpc.js` | `/api/code-review` 方法分发与错误信封 |
-| `host/engine-plan.js` | 评审引擎选择（ocr / delegate / structural） |
-| `host/service-refs.js` | `sessionController` / `workspaceRegistry` 的 per-apply 延迟引用 |
-| `host/fix.js` | 修复会话创建与提示词（RPC 与 `--fix` 共用） |
-| `host/commands.js` | `/code-review` 命令解析与执行 |
-| `host/snapshot.js` / `host/jobs.js` / `host/store.js` | 快照投影、任务执行、磁盘持久化 |
+| `index.js` | Assembly only: config normalization, service references, store/jobs/snapshot construction, tool/command/RPC registration, lifecycle |
+| `host/rpc.js` | `/api/code-review` method dispatch and error envelope |
+| `host/engine-plan.js` | Review engine selection (ocr / delegate / structural) |
+| `host/service-refs.js` | Per-apply lazy references to `sessionController` / `workspaceRegistry` |
+| `host/fix.js` | Fix session creation and prompt (shared by RPC and `--fix`) |
+| `host/commands.js` | `/code-review` command parsing and execution |
+| `host/snapshot.js` / `host/jobs.js` / `host/store.js` | Snapshot projection, job execution, on-disk persistence |
 
-## 斜杠命令 `/code-review`
+## Slash command `/code-review`
 
-在项目对话里可直接使用（参考 ocr CLI 评审类型）：
+Available directly in a project conversation (mirroring the ocr CLI review types):
 
 ```text
 /code-review workflow @test/
@@ -70,111 +75,111 @@ Agent 会启动真实评审（默认等待完成）并把问题摘要与 finding
 /code-review list | status [jobId]
 ```
 
-`@path` / `--project` 会先把项目加入项目列表再评审（未配置项目也能用），相对路径按会话 cwd 解析；
-`--fix` 评审后自动新建修复 Session；`--async` 立即返回。
+`@path` / `--project` first adds the project to the project list and then reviews it (so it also works when no projects are configured), and relative paths resolve against the session cwd;
+`--fix` opens a fix session automatically after the review; `--async` returns immediately.
 
-## 已修复标识
+## Fixed markers
 
-- 评审详情每条问题都有「标记已修复 / 撤销已修复」，右侧筛选可切换 **全部 / 未修复 / 已修复**
-- 头部与清单显示 `已修复 X / 未修复 Y`，问题卡带绿色「已修复」徽章，Markdown 导出包含修复状态
-- 标记持久化在任务文件（`resolutions`），刷新/重启后保留
-- 同一项目、同一评审类型与 scope 的新评审不再报告旧 finding 时，旧报告会**自动**标记为已修复
+- Every finding on the review details page has "Mark as fixed / Unmark fixed", and the filter on the right switches between **All / Unfixed / Fixed**
+- The header and the list show `Fixed X / Unfixed Y`, finding cards carry a green "Fixed" badge, and the Markdown export includes the fix status
+- Markers are persisted in the job file (`resolutions`) and survive refreshes and restarts
+- When a new review with the same project, review type and scope no longer reports an old finding, the old report is marked as fixed **automatically**
 
-## 一键修复 Session
+## One-click fix session
 
-评审详情页提供「新建修复 Session」：调用 Host 的 `sessionController.create({ cwd })` 在项目目录创建会话，
-并把本次 findings 整理成修复提示词（优先 critical/high、含文件与行号、建议代码）自动发送；
-客户端支持 `uiWorkspace.openSession` 时直接跳到新会话，否则在左侧会话列表打开。
+The review details page offers "New fix session": it calls the Host's `sessionController.create({ cwd })` to create a session in the project directory,
+turns this review's findings into a fix prompt (critical/high first, including files and line numbers, with the suggested code) and sends it automatically;
+when the client supports `uiWorkspace.openSession` it jumps straight to the new session, otherwise open it from the session list on the left.
 
-> 需要 DSH 提供 `sessionController`；Host 较旧（未重启）时客户端会用 DSH Client Remote 的
-> `session.create` / `session.prompt` 兜底创建，并提示重启 DSH 启用完整模式。
+> This requires DSH to provide `sessionController`; when the Host is older (not restarted yet) the client falls back to
+> DSH Client Remote's `session.create` / `session.prompt` to create the session, and prompts you to restart DSH to enable the full mode.
 
-## 看什么
+## What you get
 
-- **总览**：6 个核心指标（评审总数 / 近 7 天 / 进行中 / 问题数 / 已审文件 / 覆盖模块）、
-  **一年提交热力图**（GitHub 风格 53 周 × 7 天，5 档色阶，悬停看当日提交量、增删行、评审数与问题数，
-  可切换「提交 / 评审 / 问题」口径）、连续评审天数与最忙一天、**实时评审队列**（阶段进度条 + 当前阶段 + 耗时 + 近 3 条动态）、
-  最近评审、最近项目（mini 热力图）、热点模块（风险色条）、跨评审动态时间轴。
-- **评审**：全部评审记录，按状态 / 类型 / 项目筛选与搜索；行内展开最近动态；点击进入详情。
-- **详情**：阶段时间线（解析项目 → 选取文件 / 结构分析 → AI 评审 → 归并去重 → 生成报告）、
-  总结与覆盖率、按严重度分组的发现（文件:行号、类别、原文与建议代码双栏对比、复制建议）、
-  涉及文件排行、OCR 会话号、重新运行 / 取消 / 删除。
-- **项目**：项目卡网格（分支 / HEAD / 工作区状态 / 主语言 / 模块数 / 代码量 / mini 热力图 / 最近评审），点击切换当前项目。
-- **架构**：模块依赖图（节点大小 = 代码量，颜色 = 风险，循环依赖高亮），模块指标表与结构性发现。
-- **信息流**：入口 → 服务 → 数据/外部依赖 的链路图，点节点看关联文件与风险；逐条链路的风险说明。
-- **新建评审**：项目、6 类评审、scope（commit / from-to / 模块路径）、effort、engine、排除规则、背景说明。
+- **Overview**: 6 core metrics (total reviews / last 7 days / in progress / findings / files reviewed / modules covered),
+  a **one-year commit heatmap** (GitHub style, 53 weeks × 7 days, 5 color levels; hover for that day's commit count, added/deleted lines, review count and finding count,
+  switchable between "commits / reviews / findings"), review streaks and the busiest day, a **live review queue** (stage progress bar + current stage + elapsed time + the latest 3 activity entries),
+  recent reviews, recent projects (mini heatmaps), hotspot modules (risk color bars), and a cross-review activity timeline.
+- **Reviews**: every review record, filterable and searchable by status / type / project; expand a row for its latest activity; click through to the details.
+- **Details**: a stage timeline (resolve project → select files / structural analysis → AI review → merge and dedupe → generate report),
+  the summary and coverage, findings grouped by severity (file:line, category, side-by-side original vs. suggested code, copy suggestion),
+  a ranking of the files involved, the OCR session number, and rerun / cancel / delete.
+- **Projects**: a grid of project cards (branch / HEAD / workspace status / primary language / module count / lines of code / mini heatmap / latest review); click to switch the current project.
+- **Architecture**: module dependency graph (node size = lines of code, color = risk, cycles highlighted), module metrics table and structural findings.
+- **Data flow**: a pipeline graph from entry → service → data/external dependency; click a node to see its related files and risks, plus a risk note for each pipeline.
+- **New review**: project, the 6 review types, scope (commit / from-to / module path), effort, engine, exclusion rules, background notes.
 
-## 评审类型
+## Review types
 
-| 类型 | 引擎调用 | 说明 |
+| Type | Engine call | Description |
 |---|---|---|
-| 当前改动 `workspace` | `ocr review` | staged + unstaged + untracked，工作区干净时明确提示 |
-| 单次提交 `commit` | `ocr review --commit` | 提交相对其 parent |
-| 分支对比 `range` | `ocr review --from --to` | merge-base 语义 |
-| 项目架构 `architecture` | 本地模块图 + `ocr scan` | 模块依赖、循环、分层、上帝模块、缺失测试；扫描锚点为入口与清单文件 |
-| 代码模块 `module` | 本地模块指标 + `ocr scan --path` | 指定目录/文件的整文件评审 |
-| 信息流 `flow` | 本地链路抽取 + `ocr scan` | 入口→服务→数据/外部依赖，检查校验、鉴权、事务、幂等、超时、吞异常与数据泄露 |
+| Current changes `workspace` | `ocr review` | staged + unstaged + untracked; clearly reported when the working tree is clean |
+| Single commit `commit` | `ocr review --commit` | the commit relative to its parent |
+| Branch comparison `range` | `ocr review --from --to` | merge-base semantics |
+| Project architecture `architecture` | local module graph + `ocr scan` | module dependencies, cycles, layering, god modules, missing tests; the scan anchors are entry points and manifest files |
+| Code module `module` | local module metrics + `ocr scan --path` | whole-file review of the specified directory/file |
+| Data flow `flow` | local pipeline extraction + `ocr scan` | entry→service→data/external dependency; checks validation, authorization, transactions, idempotency, timeouts, swallowed exceptions and data leaks |
 
-两种引擎：
+Two engines:
 
-- **OCR（AI）**：需要可用的 LLM。插件探测 `OCR_LLM_URL/OCR_LLM_TOKEN/OCR_LLM_MODEL`、
-  `~/.opencodereview/config.json` 或 `ANTHROPIC_*`；也可在插件配置或 token 文件里提供，token 只存在于 Host 进程，不回传前端。
-- **委托模式（delegate）**：当 OCR 没配 LLM、而 DSH 当前会话有可用模型时，插件走 open-code-review 官方的
-  delegation 语义——OCR 仍负责文件选取与规则解析，评审由 DSH 模型完成（`ctx.llm.stream` + 默认模型），
-  不需要额外 API Key。开箱即用，结果与 OCR 的 finding 结构一致。
-- **离线结构分析**：零 LLM 依赖，始终可用。模型评审不可用时自动降级为结构分析，并在评审摘要里注明，不会伪造 AI 结论。
+- **OCR (AI)**: needs a working LLM. The plugin probes `OCR_LLM_URL/OCR_LLM_TOKEN/OCR_LLM_MODEL`,
+  `~/.opencodereview/config.json` or `ANTHROPIC_*`; they can also be supplied in the plugin config or a token file, and the token only exists in the Host process and is never sent back to the frontend.
+- **Delegate mode (delegate)**: when OCR has no LLM configured but the current DSH session has a usable model, the plugin follows open-code-review's official
+  delegation semantics — OCR still handles file selection and rule resolution, while the review is done by the DSH model (`ctx.llm.stream` + the default model),
+  so no extra API key is needed. It works out of the box, and the results use the same finding structure as OCR.
+- **Offline structural analysis**: zero LLM dependency, always available. When model-based review is unavailable it degrades to structural analysis automatically, says so in the review summary, and never fabricates AI conclusions.
 
-## 安装
+## Installation
 
-### 一键安装（把下面这行 Prompt 发给 DSH）
+### One-click install (paste the prompt below into DSH)
 
 ```text
-请安装 DSH 插件 https://github.com/jkin8010/dsh-code-review ：用 plugin_manager 的 install_bundle 直接安装这个 Git 仓库，安装完成后检查插件是否启用、ocr --version 与 LLM 引擎状态，并告诉我是否需要重启 DSH。
+Please install the DSH plugin https://github.com/jkin8010/dsh-code-review: use plugin_manager's install_bundle to install this Git repository directly. When it finishes, check whether the plugin is enabled, run ocr --version, check the LLM engine status, and tell me whether DSH needs a restart.
 ```
 
-### 手动安装
+### Manual installation
 
 ```text
-# 在 DSH 里（Web 侧栏 Plugins 或 agent tool）：
+# In DSH (Plugins in the Web sidebar, or the agent tool):
 plugin_manager → action: install_bundle
                  target: https://github.com/jkin8010/dsh-code-review
-# 或本地 clone 后 target: <仓库根目录绝对路径>
-# 仓库根 package.json 是 bundle 清单；本目录是其 exports 指向的插件实现。
+# or, after cloning locally, target: <absolute path to the repository root>
+# The repository root package.json is the bundle manifest; this directory is the plugin implementation its exports point to.
 ```
 
-> 本插件是 profile bundle；HMR 开启时无需重启，刷新页面即出现侧栏入口。
+> This plugin is a profile bundle; with HMR enabled no restart is needed — refresh the page and the sidebar entry appears.
 
-系统依赖：
+System dependencies:
 
-- `ocr` CLI ≥ 1.13：`npm i -g @alibaba-group/open-code-review`（插件会自动在 PATH / nvm / Homebrew 目录里找）
-- `git`（仓库类评审需要；非 Git 目录仍可用架构 / 模块 / 信息流评审）
-- 若要 AI 评审，另需配置 OCR 的 LLM（见上）
+- `ocr` CLI ≥ 1.13: `npm i -g @alibaba-group/open-code-review` (the plugin also looks for it in the PATH / nvm / Homebrew directories)
+- `git` (needed for repository-based reviews; non-Git directories can still use architecture / module / data-flow reviews)
+- For AI review you also need to configure an LLM for OCR (see above)
 
-## 配置（`cordis.patch.yml`，全部可选）
+## Configuration (`cordis.patch.yml`, all optional)
 
 ```yaml
 - insert:
     - id: qise-code-review
       name: '@jkin8010/dsh-code-review'
       config:
-        projectRoots: [/Users/jkin/workspace]   # 自动发现仓库（默认向下 2 层）
-        projectDepth: 2                          # 目录扫描深度 1-3
-        maxProjects: 40                          # 最多纳入的项目数
-        extraProjects: []                        # 额外纳入的项目（可非 Git）
-        defaultProjectPath: ''                            # 空 = 最近提交的已发现项目
+        projectRoots: [/Users/jkin/workspace]   # repositories to auto-discover (2 levels deep by default)
+        projectDepth: 2                          # directory scan depth, 1-3
+        maxProjects: 40                          # maximum number of projects to include
+        extraProjects: []                        # extra projects to include (may be non-Git)
+        defaultProjectPath: ''                            # empty = the most recently committed discovered project
         excludeProjects: []
-        stateDir: ~/.dsh/code-review                      # 评审历史/artifact
+        stateDir: ~/.dsh/code-review                      # review history / artifacts
         engine: auto                                      # auto | ocr | structural
         pollSeconds: 2
         heatmapDays: 365
         maxJobs: 200
         ocr:
-          command: ''            # 空 = 自动探测
-          provider: ''           # 透传 --provider
-          model: ''              # 透传 --model
-          llmUrl: ''             # 注入 OCR_LLM_URL
-          llmToken: ''           # 注入 OCR_LLM_TOKEN（也可用 llmTokenFile）
-          llmTokenFile: ''       # 从文件读取 token，避免写进配置
+          command: ''            # empty = auto-detect
+          provider: ''           # passed through as --provider
+          model: ''              # passed through as --model
+          llmUrl: ''             # injects OCR_LLM_URL
+          llmToken: ''           # injects OCR_LLM_TOKEN (llmTokenFile works too)
+          llmTokenFile: ''       # read the token from a file instead of writing it into the config
           effort: medium         # low | medium | high
           concurrency: 8
           timeoutMin: 15
@@ -183,58 +188,65 @@ plugin_manager → action: install_bundle
           extraArgs: []
 ```
 
-## 数据来源（全部只读，除插件自己的 stateDir）
+## Data sources (all read-only except the plugin's own stateDir)
 
-| 源 | 读取方式 |
+| Source | How it is read |
 |---|---|
-| 项目 / 提交热力图 | `git log --numstat --date=short`（一次读取，按天聚合，缺省天补 0）、`git ls-files`、`git status --porcelain` |
-| 改动 / 分支 / 提交范围 | `ocr review --preview`（不调用 LLM）后再跑正式评审 |
-| 整文件评审 | `ocr scan --path` |
-| 架构 / 信息流 | 本地静态分析（import 图、Tarjan 环、入口识别、ORM/SQL/外部调用识别） |
-| 评审历史 | `<stateDir>/index.json`、`jobs/<id>.json`、`stats.json`、`activity.json` |
+| Projects / commit heatmap | `git log --numstat --date=short` (one pass, aggregated by day, missing days filled with 0), `git ls-files`, `git status --porcelain` |
+| Changes / branch / commit range | `ocr review --preview` (no LLM call), then the real review |
+| Whole-file review | `ocr scan --path` |
+| Architecture / data flow | local static analysis (import graph, Tarjan cycles, entry detection, ORM/SQL/external call detection) |
+| Review history | `<stateDir>/index.json`, `jobs/<id>.json`, `stats.json`, `activity.json` |
 
-轮询：前端默认 2s 拉一次快照；Host 侧缓存项目信息（5min）、当前项目热力图（1min）、OCR 健康（1min），
-轮询不会重复打 git / ocr。
+Polling: the frontend pulls a snapshot every 2s by default; the Host caches project info (5min), the current project's heatmap (1min) and OCR health (1min),
+so polling never re-hits git / ocr.
 
-## 可靠性
+## Reliability
 
-- `ocr` 缺失、LLM 未配置、项目非 Git、仓库不可读都会降级为可读状态并给出下一步动作，不白屏。
-- 评审 job 可取消（子进程 SIGTERM→SIGKILL）、失败可重试、Host 重启后遗留 running 自动标记为中断。
-- 发现去重：结构分析与 AI 对同一问题同时命中时合并，保留 AI 表述。
-- 持久化原子写（tmp + rename），索引只存摘要，findings 按需加载。
+- A missing `ocr`, an unconfigured LLM, a non-Git project or an unreadable repository all degrade into a readable state with a next step, never a blank screen.
+- Review jobs can be cancelled (subprocess SIGTERM→SIGKILL), failures can be retried, and jobs left running after a Host restart are marked interrupted automatically.
+- Finding dedupe: when structural analysis and the AI hit the same problem, the two are merged and the AI wording is kept.
+- Persistence uses atomic writes (tmp + rename); the index stores summaries only and findings are loaded on demand.
 
-## 自检
+## Self-checks
 
 ```bash
-node ../../tests/code-review/engine-selftest.mjs     # 四类评审 + 快照 + 持久化（假适配器，无需 LLM）
-node ../../tests/code-review/delegate-selftest.mjs   # 委托模式：OCR 选文件 + DSH 模型评审（假 llm）
-node ../../tests/code-review/host-selftest.mjs       # 真实 git/ocr/analyze + 假 Cordis 路由，跑 RPC 全链路
-node ../../tests/code-review/git-ocr.test.mjs        # git/热力图 + ocr preview（真实仓库）
-node ../../tests/code-review/analyze.test.mjs        # 架构/模块/信息流分析（node:test）
-node ../../tests/code-review/preview/shoot.mjs       # 渲染真实 client.js 并截图
+node ../../tests/code-review/engine-selftest.mjs     # four review types + snapshots + persistence (fake adapters, no LLM needed)
+node ../../tests/code-review/delegate-selftest.mjs   # delegate mode: OCR file selection + DSH model review (fake llm)
+node ../../tests/code-review/host-selftest.mjs       # real git/ocr/analyze + a fake Cordis router, exercising the full RPC chain
+node ../../tests/code-review/git-ocr.test.mjs        # git/heatmap + ocr preview (real repository)
+node ../../tests/code-review/analyze.test.mjs        # architecture/module/data-flow analysis (node:test)
+node ../../tests/code-review/preview/shoot.mjs       # render the real client.js and take screenshots
 ```
 
-## 目录
+## Layout
 
 ```
 plugins/dsh-code-review/
-  index.js            Host 入口：RPC / 生命周期 / 依赖装配
-  client.js           Web 整页 UI（React.createElement，无构建步骤）
+  index.js            Host entry: RPC / lifecycle / dependency wiring
+  client.js           full-page Web UI (React.createElement, no build step)
   host/
-    config.js         配置归一化 / ocr 探测 / env 注入
-    shared.js         Finding 归一化、日期/统计工具
-    store.js          评审历史持久化（索引 + 明细 + 统计 + 动态）
-    files.js          源码文件遍历
-    prompts.js        OCR background / rule / 标题
-    jobs.js           评审状态机（6 阶段）与双引擎合并
-    snapshot.js       快照构建（项目/热力图/统计/健康）
-    git.js            项目发现、git 元信息、一年热力图、模块树
-    ocr.js            ocr CLI 适配（preview/review/scan/取消/进度/失败分类）
-    analyze.js        架构 / 模块 / 信息流 / diff 离线分析
-  locale/             侧栏与设置文案
-  tests/code-review/  自检、预览 harness、截图
+    rpc.js            /api/code-review dispatch + failure envelope
+    engine-plan.js    engine selection (ocr / delegate / structural)
+    service-refs.js   per-apply sessionController / workspaceRegistry refs
+    lifecycle.js      startup, timers, disposal
+    fix.js            fix-session creation and prompt
+    commands.js       /code-review slash command
+    tool.js           code_review model tool
+    config.js         config normalization / ocr probing / env injection
+    shared.js         Finding normalization, date and stat helpers
+    store.js          review history persistence (index + details + stats + activity)
+    files.js          source file traversal
+    prompts.js        OCR background / rule / title
+    jobs.js           review state machine (6 stages) and dual-engine merge
+    snapshot.js       snapshot construction (projects/heatmap/stats/health)
+    git.js            project discovery, git metadata, one-year heatmap, module tree
+    ocr.js            ocr CLI adapter (preview/review/scan/cancel/progress/failure classification)
+    analyze.js        architecture / module / data-flow / diff offline analysis
+  locale/             sidebar and settings copy
+  tests/code-review/  self-checks, preview harness, screenshots
 ```
 
-## 许可证
+## License
 
 Apache-2.0
