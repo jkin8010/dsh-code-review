@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     // 1. 常量 / 字典
     // =====================================================================
 
-    const PLUGIN_VERSION = '0.8.9';
+    const PLUGIN_VERSION = '0.9.0';
     const ENDPOINT = 'code-review';
     const PANEL_ID = 'code-review';
     const PANEL_ORDER = 24;
@@ -3545,6 +3545,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       });
       const flowsCount = num(obj(summary.stats).flows, flows.length);
       const entriesCount = num(obj(summary.stats).entries, entryNodes.length);
+      const downstreamCount = nodes.filter((node) => ['service', 'data', 'external'].includes(str(node.kind))).length;
 
       return h('div', { className: 'cr-stack' },
         h('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } },
@@ -3561,6 +3562,11 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             })))),
         loaded.loading && !loaded.data ? h(PlaceholderCard, { title: '信息流加载中…' }) : null,
         loaded.error && !loaded.data ? h(Banner, { tone: 'error' }, loaded.error) : null,
+        nodes.length && downstreamCount === 0
+          ? h('div', { style: { marginBottom: 10 } },
+            h(Banner, { tone: 'warn' },
+              '本次只识别到入口节点：没有解析到下游服务 / 数据 / 外部依赖。常见原因是 TS 路径别名、依赖注入（如 NestJS constructor 注入）、动态路由或处理器拆分到其他文件；可先对具体包做「代码模块」评审，或在项目加入 tsconfig paths 后再复评。'))
+          : null,
         h('div', { className: 'cr-graph-wrap' },
           h('div', { className: 'cr-graph-canvas' },
             h(FlowGraph, { graph, selected, onSelect: (id) => setSelected(selected === id ? '' : id) })),

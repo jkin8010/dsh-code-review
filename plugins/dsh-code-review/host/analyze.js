@@ -555,7 +555,9 @@ function resolveJs(fromPath, spec, index) {
   }
   if (clean.startsWith('@/') || clean.startsWith('~/') || clean.startsWith('#/')) {
     const base = clean.slice(2);
-    return firstExisting([base, ...exts.map((ext) => base + ext), ...exts.map((ext) => `${base}/index${ext}`)], index.fileSet);
+    const hit = firstExisting([base, ...exts.map((ext) => base + ext), ...exts.map((ext) => `${base}/index${ext}`)], index.fileSet);
+    if (hit) return hit;
+    // Fall through to suffix matching for monorepo aliases that map below src/.
   }
   // Bare specifier: only accept it when it maps back into the project
   // (path alias or workspace package), never node_modules.
@@ -564,6 +566,14 @@ function resolveJs(fromPath, spec, index) {
     const hits = extname(root) ? [root] : [root, ...exts.map((ext) => root + ext), ...exts.map((ext) => `${root}/index${ext}`)];
     const hit = firstExisting(hits, index.fileSet);
     if (hit) return hit;
+  }
+  // Monorepo path aliases (`@/…`, `~/…`, `@scope/pkg/…`) do not have a single
+  // project-root mapping. Fall back to suffix matching against the file index
+  // so `@/services/order` still resolves to packages/x/src/services/order.ts.
+  const stripped = clean.replace(/^@[^/]+\//, '').replace(/^[~#]+\//, '');
+  for (const candidate of [clean, stripped, `src/${stripped}`]) {
+    const suffixHit = resolveSuffix(candidate, index, exts);
+    if (suffixHit) return suffixHit;
   }
   return null;
 }
@@ -2379,6 +2389,17 @@ export async function analyzeFlow({ project, files, readFile } = {}) {
       addEdge(viaId, id, 'call');
     }
 
+    // If no service was resolved, still scan the direct imports used by the
+    // handler for data access; otherwise a TS monorepo shows only entry nodes.
+    const fallbackOwners = [];
+    if (!services.length) {
+      for (const binding of bindings) {
+        if (fallbackOwners.length >= 4) break;
+        if (!binding.resolved || binding.resolved === entry.file) continue;
+        const name = String(binding.local).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        if (new RegExp(`\\b${name}\\b`).test(captured.text)) fallbackOwners.push(binding.resolved);
+      }
+    }
     const ownerFiles = [];
     const addOwner = (path) => {
       if (path && !ownerFiles.includes(path) && byPath.has(path)) ownerFiles.push(path);
@@ -2386,6 +2407,7 @@ export async function analyzeFlow({ project, files, readFile } = {}) {
     addOwner(entry.file);
     for (const service of services) addOwner(service.file);
     for (const item of secondary) addOwner(item.file);
+    for (const path of fallbackOwners) addOwner(path);
     const dataItems = [];
     for (const owner of ownerFiles.slice(0, 10)) {
       const file = byPath.get(owner);
@@ -2407,7 +2429,7 @@ export async function analyzeFlow({ project, files, readFile } = {}) {
           entryFiles: [],
           meta: { dataKind: item.kind, mode: item.mode, line: item.line },
         });
-        const ownerId = owner === entry.file ? entryId : `svc:${owner}`;
+        const ownerId = owner === entry.file || fallbackOwners.includes(owner) ? entryId : `svc:${owner}`;
         const edgeKinds = item.kind === 'queue' ? 'emit' : item.kind === 'http' ? 'http' : item.mode;
         addEdge(ownerId, dataId, edgeKinds);
       }

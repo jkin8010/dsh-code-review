@@ -172,6 +172,20 @@ test('module: 超大文件 / 长函数 / 危险模式 / 重复代码', () => {
   assert.ok(moduleAnalysis.findings.filter((item) => item.severity === 'high').length >= 2, 'module: 至少 2 条 high');
 });
 
+test('flow: monorepo 路径别名仍能解析服务与数据节点', async () => {
+  const aliasFlow = await analyzeFlow({
+    project: projectOf('flow-alias'),
+    files: [],
+    readFile: READ,
+  });
+  assertAnalysisShape(aliasFlow, 'flow-alias');
+  const kinds = new Set(aliasFlow.graph.nodes.map((node) => node.kind));
+  assert.ok(kinds.has('entry'), 'flow-alias: 含 entry');
+  assert.ok(kinds.has('service'), 'flow-alias: @/services/order 解析为 service');
+  assert.ok(kinds.has('data'), 'flow-alias: service 内的 db 访问解析为 data');
+  assert.ok(aliasFlow.flows.some((flow) => flow.data.length > 0), 'flow-alias: 链路含数据步骤');
+});
+
 test('flow: 入口识别 / 服务链路 / 数据节点 / 缺校验 finding', () => {
   assertAnalysisShape(flow, 'flow');
   assert.ok(flow.graph, 'flow: graph 非空');
