@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     // 1. 常量 / 字典
     // =====================================================================
 
-    const PLUGIN_VERSION = '0.8.8';
+    const PLUGIN_VERSION = '0.8.9';
     const ENDPOINT = 'code-review';
     const PANEL_ID = 'code-review';
     const PANEL_ORDER = 24;
@@ -3276,7 +3276,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
     };
 
     const FLOW_ROW_HEIGHT = 78;
-    const FLOW_COLUMN_LIMIT = 48;
+    const FLOW_COLUMN_LIMIT = 20;
     const FLOW_KINDS = ['entry', 'service', 'data', 'external'];
 
     function flowCanvasSize(nodes) {

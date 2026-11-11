@@ -467,6 +467,7 @@ async function main() {
     };
   });
   const bigReadable = bigInfo.height > 300 && bigInfo.height <= 700 && bigInfo.nodes > 15 && !bigInfo.overlaps;
+  const nodesBefore = await page.$$eval('.cr-graph-node', (nodes) => nodes.length);
   const moreBefore = await page.$$eval('[data-more-kind="entry"]', (nodes) => nodes.length);
   const expanded = await page.evaluate(() => {
     const more = document.querySelector('[data-more-kind="entry"]');
@@ -474,7 +475,17 @@ async function main() {
     more.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     return true;
   });
-  await page.waitForTimeout(400);
+  await page.waitForTimeout(350);
+  const nodesAfter = await page.$$eval('.cr-graph-node', (nodes) => nodes.length);
+  for (let round = 0; round < 6; round += 1) {
+    const more = await page.$('[data-more-kind="entry"]');
+    if (!more) break;
+    await page.evaluate(() => {
+      const node = document.querySelector('[data-more-kind="entry"]');
+      if (node) node.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    await page.waitForTimeout(250);
+  }
   const moreAfter = await page.$$eval('[data-more-kind="entry"]', (nodes) => nodes.length);
   // -- drag pan: no text selection, no feedback jitter ---------------------
   await page.click('.cr-graph-tool.is-text');
@@ -507,12 +518,12 @@ async function main() {
   await page.waitForTimeout(250);
   const fullHeight = await page.$eval('.cr-graph-svg', (element) => Number((element.getAttribute('viewBox') || '').split(/\s+/)[3]));
   const bigOk = bigReadable && fitAllClicked && fullHeight > 900 && bigInfo.note
-    && bigInfo.nodes >= 48 && bigInfo.nodes <= 80 && bigInfo.visibleColumns >= 2
-    && moreBefore === 1 && moreAfter === 0 && expanded;
+    && bigInfo.nodes >= 20 && bigInfo.nodes <= 80 && bigInfo.visibleColumns >= 2
+    && moreBefore === 1 && moreAfter === 0 && expanded && nodesAfter > nodesBefore;
   results.push({
     view: 'flow-big',
     ok: bigOk,
-    issues: bigOk ? [] : [`大信息流图布局异常：initialH=${bigInfo.height} fullH=${fullHeight} nodes=${bigInfo.nodes} cols=${bigInfo.visibleColumns} overlaps=${bigInfo.overlaps} fit=${fitAllClicked} note=${bigInfo.note} moreBefore=${moreBefore} moreAfter=${moreAfter} expanded=${expanded}`],
+    issues: bigOk ? [] : [`大信息流图布局异常：initialH=${bigInfo.height} fullH=${fullHeight} nodes=${bigInfo.nodes} cols=${bigInfo.visibleColumns} overlaps=${bigInfo.overlaps} fit=${fitAllClicked} note=${bigInfo.note} moreBefore=${moreBefore} moreAfter=${moreAfter} expanded=${expanded} nodesBefore=${nodesBefore} nodesAfter=${nodesAfter}`],
   });
   if (!bigOk) failed = true;
 
