@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     // 1. 常量 / 字典
     // =====================================================================
 
-    const PLUGIN_VERSION = '0.8.5';
+    const PLUGIN_VERSION = '0.8.6';
     const ENDPOINT = 'code-review';
     const PANEL_ID = 'code-review';
     const PANEL_ORDER = 24;
@@ -963,6 +963,9 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
   font-size:10.5px;color:var(--faint);background:var(--hud-soft);border:1px solid var(--line);
   border-radius:8px;padding:5px 9px;backdrop-filter:blur(8px)}
 .cr-graph-canvas-legend i{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px}
+.cr-graph-more{position:absolute;left:14px;bottom:34px;max-width:min(560px,calc(100% - 28px));
+  padding:5px 9px;border-radius:8px;border:1px solid var(--line);background:var(--overlay);
+  font-size:10.5px;color:var(--warn-soft);pointer-events:none}
 .cr-graph-canvas-hint{position:absolute;right:14px;bottom:12px;font-size:10.5px;color:var(--faint);
   background:var(--hud-soft);border:1px solid var(--line);border-radius:7px;padding:4px 8px}
 .cr-metric-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -2933,9 +2936,9 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
      * pointer drag pans, and the toolbar resets to the fitted view. Implemented
      * by changing the SVG viewBox so labels, markers and strokes scale together.
      */
-    function useGraphZoom(width, height) {
+    function useGraphZoom(width, height, { initialHeight = height } = {}) {
       const svgRef = React.useRef(null);
-      const [view, setView] = React.useState({ x: 0, y: 0, w: width, h: height });
+      const [view, setView] = React.useState({ x: 0, y: 0, w: width, h: Math.min(height, initialHeight) });
       const viewRef = React.useRef(view);
       viewRef.current = view;
       const dragRef = React.useRef(null);
@@ -2965,8 +2968,8 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         });
       }, [width, height]);
       React.useEffect(() => {
-        setView({ x: 0, y: 0, w: width, h: height });
-      }, [width, height]);
+        setView({ x: 0, y: 0, w: width, h: Math.min(height, initialHeight) });
+      }, [width, height, initialHeight]);
       React.useEffect(() => {
         const svg = svgRef.current;
         if (!svg) return undefined;
@@ -3019,7 +3022,8 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         percent: Math.round((width / view.w) * 100),
         zoomIn: () => zoomAt(1.25),
         zoomOut: () => zoomAt(1 / 1.25),
-        reset: () => setView({ x: 0, y: 0, w: width, h: height }),
+        reset: () => setView({ x: 0, y: 0, w: width, h: Math.min(height, initialHeight) }),
+        fitAll: () => setView({ x: 0, y: 0, w: width, h: height }),
         pointer: {
           onPointerDown,
           onPointerMove,
@@ -3071,7 +3075,7 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
           h('button', { type: 'button', className: 'cr-graph-tool', onClick: zoom.zoomOut, title: '缩小' }, '−'),
           h('span', { className: 'cr-graph-zoom' }, `${zoom.percent}%`),
           h('button', { type: 'button', className: 'cr-graph-tool', onClick: zoom.zoomIn, title: '放大' }, '＋'),
-          h('button', { type: 'button', className: 'cr-graph-tool is-text', onClick: zoom.reset, title: '恢复适配视图' }, '重置')),
+          h('button', { type: 'button', className: 'cr-graph-tool is-text', onClick: zoom.reset, title: '恢复可读视图' }, '重置')),
         h('svg', { ref: zoom.svgRef, className: 'cr-graph-svg', viewBox: zoom.viewBox, preserveAspectRatio: 'xMidYMid meet', ...zoom.pointer },
           h('defs', null,
             h('marker', { id: 'cr-arrow', viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 5, markerHeight: 5, orient: 'auto-start-reverse' },
@@ -3272,6 +3276,39 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
     };
 
     const FLOW_ROW_HEIGHT = 78;
+    const FLOW_MAX_NODES = 64;
+    const FLOW_MAX_PER_KIND = 24;
+
+    /** Keep a huge monorepo graph readable: cap nodes, prioritising risk/degree. */
+    function limitFlowGraph(nodes, edges) {
+      if (nodes.length <= FLOW_MAX_NODES) return { nodes, edges, hidden: 0 };
+      const degree = new Map();
+      edges.forEach((edge) => {
+        degree.set(str(edge.from), (degree.get(str(edge.from)) ?? 0) + 1);
+        degree.set(str(edge.to), (degree.get(str(edge.to)) ?? 0) + 1);
+      });
+      const rank = { critical: 0, high: 1, medium: 2, low: 3 };
+      const score = (node) => (rank[str(node.risk)] ?? 4) * 1000 - (degree.get(str(node.id)) ?? 0);
+      const byKind = { entry: [], service: [], data: [], external: [] };
+      nodes.forEach((node) => {
+        const kind = str(node.kind);
+        (byKind[kind] || byKind.service).push(node);
+      });
+      const chosen = [];
+      const chosenIds = new Set();
+      Object.values(byKind).forEach((list) => {
+        list.slice().sort((a, b) => score(a) - score(b)).slice(0, FLOW_MAX_PER_KIND).forEach((node) => {
+          if (chosen.length >= FLOW_MAX_NODES || chosenIds.has(str(node.id))) return;
+          chosen.push(node);
+          chosenIds.add(str(node.id));
+        });
+      });
+      return {
+        nodes: chosen,
+        edges: edges.filter((edge) => chosenIds.has(str(edge.from)) && chosenIds.has(str(edge.to))),
+        hidden: nodes.length - chosen.length,
+      };
+    }
 
     function flowCanvasSize(nodes) {
       const counts = { entry: 0, service: 0, data: 0, external: 0 };
@@ -3323,14 +3360,17 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
     function FlowGraph(props) {
       const spec = props || {};
       const graph = obj(spec.graph);
-      const nodes = arr(graph.nodes);
-      const edges = arr(graph.edges);
+      const allNodes = arr(graph.nodes);
+      const allEdges = arr(graph.edges);
+      const limited = React.useMemo(() => limitFlowGraph(allNodes, allEdges), [allNodes, allEdges]);
+      const nodes = limited.nodes;
+      const edges = limited.edges;
       const size = React.useMemo(() => flowCanvasSize(nodes), [nodes]);
       const width = size.width;
       const height = size.height;
       const [hover, setHover] = React.useState(null);
-      const zoom = useGraphZoom(width, height);
-      const layout = React.useMemo(() => computeFlowLayout(nodes, width, height), [nodes]);
+      const zoom = useGraphZoom(width, height, { initialHeight: 560 });
+      const layout = React.useMemo(() => computeFlowLayout(nodes, width, height), [nodes, width, height]);
       const selected = str(spec.selected);
       const neighbors = React.useMemo(() => {
         const map = new Map();
@@ -3351,7 +3391,8 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
           h('button', { type: 'button', className: 'cr-graph-tool', onClick: zoom.zoomOut, title: '缩小' }, '−'),
           h('span', { className: 'cr-graph-zoom' }, `${zoom.percent}%`),
           h('button', { type: 'button', className: 'cr-graph-tool', onClick: zoom.zoomIn, title: '放大' }, '＋'),
-          h('button', { type: 'button', className: 'cr-graph-tool is-text', onClick: zoom.reset, title: '恢复适配视图' }, '重置')),
+          h('button', { type: 'button', className: 'cr-graph-tool is-text', onClick: zoom.reset, title: '恢复可读视图' }, '重置'),
+          h('button', { type: 'button', className: 'cr-graph-tool is-text', onClick: zoom.fitAll, title: '缩放到完整画布' }, '全览')),
         h('svg', { ref: zoom.svgRef, className: 'cr-graph-svg', viewBox: zoom.viewBox, preserveAspectRatio: 'xMidYMid meet', ...zoom.pointer },
           h('defs', null,
             h('marker', { id: 'cr-flow-arrow', viewBox: '0 0 10 10', refX: 8, refY: 5, markerWidth: 5, markerHeight: 5, orient: 'auto-start-reverse' },
@@ -3414,6 +3455,10 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
               className: 'cr-graph-sub',
             }, `${str(entry.node.path, '').slice(0, 30)}`));
           })),
+        limited.hidden > 0
+          ? h('div', { className: 'cr-graph-more' },
+            `节点过多，仅展示 ${nodes.length}/${allNodes.length} 个（优先高风险/高连接）· 完整链路见下方 flow 列表`)
+          : null,
         h('div', { className: 'cr-graph-canvas-hint' }, '滚轮缩放 · 拖拽平移 · 点击节点查看关联文件与 findings'),
         hover ? h('div', {
           className: 'cr-tooltip',

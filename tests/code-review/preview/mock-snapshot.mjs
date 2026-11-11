@@ -722,7 +722,7 @@ export function buildMock() {
     version: 184,
     ok: true,
     config: {
-      hostVersion: '0.8.5',
+      hostVersion: '0.8.6',
       projectRoots: ['/Users/jkin/workspace/jkin8010'],
       defaultProjectId: current.id,
       defaultProjectPath: '/Users/jkin/workspace/jkin8010/mopng-api',
@@ -832,7 +832,7 @@ export function buildMock() {
   function graph(kind) {
     const built = buildGraph(kind === 'flow' ? 'flow' : 'architecture');
     if (kind === 'flow' && new URLSearchParams(window.location.search).get('bigflow') === '1') {
-      const extra = Array.from({ length: 18 }, (_, index) => ({
+      const extra = Array.from({ length: 80 }, (_, index) => ({
         ...built.nodes[index % built.nodes.length],
         id: `big-entry-${index}`,
         kind: 'entry',

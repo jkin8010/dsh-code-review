@@ -458,9 +458,10 @@ async function main() {
     const overlaps = rects.some((left, index) => rects.slice(index + 1).some((right) => (
       left.x === right.x && left.y < right.y + right.h - 0.5 && right.y < left.y + left.h - 0.5
     )));
-    return { height: viewBox[3] || 0, nodes: rects.length, overlaps };
+    const note = document.querySelector('.cr-graph-more');
+    return { height: viewBox[3] || 0, nodes: rects.length, overlaps, note: Boolean(note && note.textContent.includes('节点过多')) };
   });
-  const bigOk = bigInfo.height > 900 && bigInfo.nodes > 15 && !bigInfo.overlaps;
+  const bigReadable = bigInfo.height > 300 && bigInfo.height <= 700 && bigInfo.nodes > 15 && !bigInfo.overlaps;
   // -- drag pan: no text selection, no feedback jitter ---------------------
   await page.click('.cr-graph-tool.is-text');
   await page.waitForTimeout(150);
@@ -484,10 +485,18 @@ async function main() {
   });
   if (!dragOk) failed = true;
 
+  const fitAllClicked = await page.evaluate(() => {
+    const button = [...document.querySelectorAll('.cr-graph-tool')].find((node) => node.textContent.trim() === '全览');
+    if (button) button.click();
+    return Boolean(button);
+  });
+  await page.waitForTimeout(250);
+  const fullHeight = await page.$eval('.cr-graph-svg', (element) => Number((element.getAttribute('viewBox') || '').split(/\s+/)[3]));
+  const bigOk = bigReadable && fitAllClicked && fullHeight > 900 && bigInfo.note && bigInfo.nodes <= 64;
   results.push({
     view: 'flow-big',
     ok: bigOk,
-    issues: bigOk ? [] : [`大信息流图布局异常：viewBoxHeight=${bigInfo.height} nodes=${bigInfo.nodes} overlaps=${bigInfo.overlaps}`],
+    issues: bigOk ? [] : [`大信息流图布局异常：initialH=${bigInfo.height} fullH=${fullHeight} nodes=${bigInfo.nodes} overlaps=${bigInfo.overlaps} fit=${fitAllClicked} note=${bigInfo.note}`],
   });
   if (!bigOk) failed = true;
 
