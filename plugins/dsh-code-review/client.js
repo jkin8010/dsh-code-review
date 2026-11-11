@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     // 1. 常量 / 字典
     // =====================================================================
 
-    const PLUGIN_VERSION = '0.8.6';
+    const PLUGIN_VERSION = '0.8.7';
     const ENDPOINT = 'code-review';
     const PANEL_ID = 'code-review';
     const PANEL_ORDER = 24;
@@ -3276,12 +3276,25 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
     };
 
     const FLOW_ROW_HEIGHT = 78;
-    const FLOW_MAX_NODES = 64;
-    const FLOW_MAX_PER_KIND = 24;
+    const FLOW_COLUMN_LIMIT = 48;
+    const FLOW_KINDS = ['entry', 'service', 'data', 'external'];
 
-    /** Keep a huge monorepo graph readable: cap nodes, prioritising risk/degree. */
-    function limitFlowGraph(nodes, edges) {
-      if (nodes.length <= FLOW_MAX_NODES) return { nodes, edges, hidden: 0 };
+    function flowCanvasSize(nodes) {
+      const counts = { entry: 0, service: 0, data: 0, external: 0 };
+      arr(nodes).forEach((node) => {
+        const kind = str(node.kind);
+        counts[Object.hasOwn(counts, kind) ? kind : 'service'] += 1;
+      });
+      const maxRows = Math.max(1, ...Object.values(counts));
+      return { width: 1180, height: Math.max(560, 130 + maxRows * FLOW_ROW_HEIGHT) };
+    }
+
+    /**
+     * Per-column paging for huge graphs. Each column shows at most 48 nodes plus
+     * one clickable "…" row when more exist; expanding a column reveals another
+     * 48. Sorting keeps the riskiest / most connected nodes first.
+     */
+    function buildFlowDisplay(nodes, edges, limits = {}) {
       const degree = new Map();
       edges.forEach((edge) => {
         degree.set(str(edge.from), (degree.get(str(edge.from)) ?? 0) + 1);
@@ -3294,30 +3307,31 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         const kind = str(node.kind);
         (byKind[kind] || byKind.service).push(node);
       });
-      const chosen = [];
-      const chosenIds = new Set();
-      Object.values(byKind).forEach((list) => {
-        list.slice().sort((a, b) => score(a) - score(b)).slice(0, FLOW_MAX_PER_KIND).forEach((node) => {
-          if (chosen.length >= FLOW_MAX_NODES || chosenIds.has(str(node.id))) return;
-          chosen.push(node);
-          chosenIds.add(str(node.id));
-        });
+      const shown = [];
+      const hidden = {};
+      FLOW_KINDS.forEach((kind) => {
+        const sorted = byKind[kind].slice().sort((a, b) => score(a) - score(b));
+        const limit = Math.max(FLOW_COLUMN_LIMIT, Number(limits[kind]) || FLOW_COLUMN_LIMIT);
+        const take = sorted.slice(0, limit);
+        shown.push(...take);
+        hidden[kind] = sorted.length - take.length;
       });
+      const more = FLOW_KINDS
+        .filter((kind) => hidden[kind] > 0)
+        .map((kind) => ({
+          id: `flow-more-${kind}`,
+          kind,
+          label: `… 还有 ${hidden[kind]} 个`,
+          hidden: hidden[kind],
+          more: true,
+        }));
+      const visibleIds = new Set(shown.map((node) => str(node.id)));
       return {
-        nodes: chosen,
-        edges: edges.filter((edge) => chosenIds.has(str(edge.from)) && chosenIds.has(str(edge.to))),
-        hidden: nodes.length - chosen.length,
+        nodes: [...shown, ...more],
+        edges: edges.filter((edge) => visibleIds.has(str(edge.from)) && visibleIds.has(str(edge.to))),
+        hidden,
+        hiddenTotal: Object.values(hidden).reduce((sum, value) => sum + value, 0),
       };
-    }
-
-    function flowCanvasSize(nodes) {
-      const counts = { entry: 0, service: 0, data: 0, external: 0 };
-      arr(nodes).forEach((node) => {
-        const kind = str(node.kind);
-        counts[Object.hasOwn(counts, kind) ? kind : 'service'] += 1;
-      });
-      const maxRows = Math.max(1, ...Object.values(counts));
-      return { width: 1180, height: Math.max(560, 130 + maxRows * FLOW_ROW_HEIGHT) };
     }
 
     function computeFlowLayout(nodes, width, height) {
@@ -3362,9 +3376,14 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
       const graph = obj(spec.graph);
       const allNodes = arr(graph.nodes);
       const allEdges = arr(graph.edges);
-      const limited = React.useMemo(() => limitFlowGraph(allNodes, allEdges), [allNodes, allEdges]);
-      const nodes = limited.nodes;
-      const edges = limited.edges;
+      const [limits, setLimits] = React.useState({});
+      const display = React.useMemo(() => buildFlowDisplay(allNodes, allEdges, limits), [allNodes, allEdges, limits]);
+      const nodes = display.nodes;
+      const edges = display.edges;
+      const expandKind = (kind) => setLimits((current) => ({
+        ...current,
+        [kind]: (Number(current[kind]) || FLOW_COLUMN_LIMIT) + FLOW_COLUMN_LIMIT,
+      }));
       const size = React.useMemo(() => flowCanvasSize(nodes), [nodes]);
       const width = size.width;
       const height = size.height;
@@ -3427,6 +3446,26 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
             });
           }),
           Array.from(layout.positions.values()).map((entry) => {
+            if (entry.node.more) {
+              return h('g', {
+                key: str(entry.node.id),
+                className: 'cr-graph-node cr-graph-more-node',
+                'data-more-kind': str(entry.kind),
+                style: { cursor: 'pointer' },
+                onClick: () => expandKind(str(entry.kind)),
+              },
+              h('rect', {
+                x: entry.x - entry.w / 2, y: entry.y - entry.h / 2,
+                width: entry.w, height: entry.h, rx: 12,
+                fill: 'var(--surface-soft)',
+                stroke: 'var(--line-strong)',
+                strokeDasharray: '5 4',
+              }),
+              h('text', {
+                x: entry.x, y: entry.y + 4, textAnchor: 'middle',
+                style: { fill: 'var(--muted)', fontSize: 12, fontWeight: 620 },
+              }, str(entry.node.label), ' · 点击展开'));
+            }
             const kindMeta = FLOW_KIND_META[entry.kind] || FLOW_KIND_META.service;
             const isSelected = selected === str(entry.node.id);
             const isDim = selected && !isSelected && !(related && related.has(str(entry.node.id)));
@@ -3455,9 +3494,9 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
               className: 'cr-graph-sub',
             }, `${str(entry.node.path, '').slice(0, 30)}`));
           })),
-        limited.hidden > 0
+        display.hiddenTotal > 0
           ? h('div', { className: 'cr-graph-more' },
-            `节点过多，仅展示 ${nodes.length}/${allNodes.length} 个（优先高风险/高连接）· 完整链路见下方 flow 列表`)
+            `每栏最多显示 ${FLOW_COLUMN_LIMIT} 个，已隐藏 ${display.hiddenTotal} 个 · 点击列的「…」展开更多，完整链路见下方列表`)
           : null,
         h('div', { className: 'cr-graph-canvas-hint' }, '滚轮缩放 · 拖拽平移 · 点击节点查看关联文件与 findings'),
         hover ? h('div', {
