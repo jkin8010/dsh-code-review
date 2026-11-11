@@ -6,7 +6,7 @@
 > 四类评审（当前改动 / 项目架构 / 代码模块 / 信息流业务工作流）、实时进度与动态、
 > GitHub 风格提交热力图、评审详情与项目/模块统计，一屏完成。
 
-![评审中心总览](docs/screenshots/code-review-overview.png)
+![评审中心总览](plugins/dsh-code-review/screenshots/code-review-overview.png)
 
 ## 特性
 
@@ -29,11 +29,11 @@
 - **图表缩放 / 大数据降噪**：架构依赖图 / 信息流链路图支持**滚轮缩放、拖拽平移、重置/全览**；超大信息流图每栏最多显示 20 个节点，更多时显示「…」点击展开下一批
 - **项目页 / 架构依赖图 / 信息流泳道图 / 新建评审弹层 / 设置抽屉**
 
-![浅色主题](docs/screenshots/code-review-light.png)
-![评审详情](docs/screenshots/code-review-detail.png)
-![已修复标识与筛选](docs/screenshots/code-review-fixed.png)
-![项目架构图谱](docs/screenshots/code-review-architecture.png)
-![信息流业务链路](docs/screenshots/code-review-flow.png)
+![浅色主题](plugins/dsh-code-review/screenshots/code-review-light.png)
+![评审详情](plugins/dsh-code-review/screenshots/code-review-detail.png)
+![已修复标识与筛选](plugins/dsh-code-review/screenshots/code-review-fixed.png)
+![项目架构图谱](plugins/dsh-code-review/screenshots/code-review-architecture.png)
+![信息流业务链路](plugins/dsh-code-review/screenshots/code-review-flow.png)
 
 > 截图为预览 harness 渲染；项目列表取自 [@jkin8010](https://github.com/jkin8010) 的公开仓库名称，评审数据为演示数据。
 
@@ -184,11 +184,11 @@ plugins/dsh-code-review/        # 插件实现（Host/Client/安装包）
   host/                        # git / ocr / 分析器 / 任务状态机 / 快照 / 持久化 / 委托评审
   locale/                      # 侧栏与设置文案
   cordis.patch.yml             # bundle 默认配置
+  screenshots/                 # 界面截图
 tests/code-review/             # 自检（真实 git/ocr + 假 Cordis/LLM）与截图 harness
 docs/CODE-REVIEW-CONTRACT.zh.md   # 插件与前后端的字段/接口契约
 docs/CODE-REVIEW-DELIVERY.zh.md   # 交付、验收记录与已知限制
 docs/RELEASE-HISTORY.md        # 已清理 tag 的版本说明归档
-docs/screenshots/              # 界面截图
 ```
 
 ## 验证

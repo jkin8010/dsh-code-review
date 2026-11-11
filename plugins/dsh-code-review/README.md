@@ -12,14 +12,14 @@ Every review has live stage progress and an activity stream; open one to read th
 the suggested-code diffs and the coverage;
 the overview page shows the past year's commit and review rhythm as a GitHub-style heatmap, and summarizes the projects and hotspot modules reviewed recently.
 
-![Code review center overview](../../docs/screenshots/code-review-overview.png)
-![Review details](../../docs/screenshots/code-review-detail.png)
-![Project architecture graph](../../docs/screenshots/code-review-architecture.png)
-![Business data-flow pipeline](../../docs/screenshots/code-review-flow.png)
-![Recent reviews](../../docs/screenshots/code-review-reviews.png)
-![Project and module stats](../../docs/screenshots/code-review-projects.png)
-![New review](../../docs/screenshots/code-review-launch.png)
-![Settings and engine status](../../docs/screenshots/code-review-settings.png)
+![Code review center overview](screenshots/code-review-overview.png)
+![Review details](screenshots/code-review-detail.png)
+![Project architecture graph](screenshots/code-review-architecture.png)
+![Business data-flow pipeline](screenshots/code-review-flow.png)
+![Recent reviews](screenshots/code-review-reviews.png)
+![Project and module stats](screenshots/code-review-projects.png)
+![New review](screenshots/code-review-launch.png)
+![Settings and engine status](screenshots/code-review-settings.png)
 
 > The implementation contract is documented in [docs/CODE-REVIEW-CONTRACT.md](../../docs/CODE-REVIEW-CONTRACT.md),
 > and the delivery and acceptance records in [docs/CODE-REVIEW-DELIVERY.md](../../docs/CODE-REVIEW-DELIVERY.md).

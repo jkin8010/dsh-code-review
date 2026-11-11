@@ -6,7 +6,7 @@ English | [简体中文](README.zh.md)
 > Four review types (current changes / project architecture / code modules / business data-flow workflows), live progress and activity,
 > a GitHub-style commit heatmap, review details and per-project/module stats — all on one screen.
 
-![Code review center overview](docs/screenshots/code-review-overview.png)
+![Code review center overview](plugins/dsh-code-review/screenshots/code-review-overview.png)
 
 ## Features
 
@@ -26,11 +26,11 @@ English | [简体中文](README.zh.md)
   recently reviewed projects, hotspot modules, severity/category distribution, coverage
 - **Project page / architecture dependency graph / data-flow swimlane diagram / new-review dialog / settings drawer**
 
-![Light theme](docs/screenshots/code-review-light.png)
-![Review details](docs/screenshots/code-review-detail.png)
-![Fixed markers and filtering](docs/screenshots/code-review-fixed.png)
-![Project architecture graph](docs/screenshots/code-review-architecture.png)
-![Business data-flow pipeline](docs/screenshots/code-review-flow.png)
+![Light theme](plugins/dsh-code-review/screenshots/code-review-light.png)
+![Review details](plugins/dsh-code-review/screenshots/code-review-detail.png)
+![Fixed markers and filtering](plugins/dsh-code-review/screenshots/code-review-fixed.png)
+![Project architecture graph](plugins/dsh-code-review/screenshots/code-review-architecture.png)
+![Business data-flow pipeline](plugins/dsh-code-review/screenshots/code-review-flow.png)
 
 > The screenshots are rendered by the preview harness; the project list uses public repository names from [@jkin8010](https://github.com/jkin8010), and the review data is demo data.
 
@@ -177,11 +177,11 @@ plugins/dsh-code-review/        # plugin implementation (Host/Client/install pac
   host/                        # git / ocr / analyzers / job state machine / snapshot / persistence / delegated review
   locale/                      # sidebar and settings copy
   cordis.patch.yml             # bundle default config
+  screenshots/                 # UI screenshots
 tests/code-review/             # self-tests (real git/ocr + fake Cordis/LLM) and the screenshot harness
 docs/CODE-REVIEW-CONTRACT.md    # field/API contract between the plugin and the front/back end
 docs/CODE-REVIEW-DELIVERY.md    # delivery and acceptance records, plus known limitations
 docs/RELEASE-HISTORY.md        # archived notes for releases whose tags were cleaned up
-docs/screenshots/              # UI screenshots
 ```
 
 ## Verification

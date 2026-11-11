@@ -467,7 +467,7 @@ medium #ffd166 / low #6ea8fe；字体 system-ui + ui-monospace；圆角 12-16；
 running 用呼吸点 + 进度流动；数字 count-up；热力图格子入场 stagger；不堆砌霓虹。
 
 **预览自检**：`tests/code-review/preview/` 用 mock Snapshot 渲染 client.js（模拟 `__ModuleLoader__`/connection/slots/locale），
-Playwright 截图到 `docs/screenshots/code-review-*.png`，并做关键断言（无 console error、热力图 371 格、详情可打开等）。
+Playwright 截图到 `plugins/dsh-code-review/screenshots/code-review-*.png`，并做关键断言（无 console error、热力图 371 格、详情可打开等）。
 
 ---
 

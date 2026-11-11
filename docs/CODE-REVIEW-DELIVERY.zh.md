@@ -2,7 +2,7 @@
 
 简体中文 | [English](CODE-REVIEW-DELIVERY.md)
 
-> 插件包：`plugins/dsh-code-review`（`@jkin8010/dsh-code-review` v0.9.1）
+> 插件包：`plugins/dsh-code-review`（`@jkin8010/dsh-code-review` v0.9.2）
 > 依赖：`ocr`（`@alibaba-group/open-code-review`）v1.13.6、`git`、Node 22+
 > 本机已安装到 desktop profile；**重启 DSH 后生效**（见文末）。
 
@@ -99,7 +99,7 @@ plugins/dsh-code-review/
 | 架构/模块/信息流/diff 分析 | `node tests/code-review/analyze.test.mjs` | ✅ 8/8 |
 | 真实 client.js 渲染 + 截图 + DOM 断言 | `node tests/code-review/preview/shoot.mjs` | ✅ |
 
-截图：`docs/screenshots/code-review-{overview,reviews,detail,fixed,launch,projects,architecture,flow,settings,add-project}.png`（含已修复标识）。
+截图：`plugins/dsh-code-review/screenshots/code-review-{overview,reviews,detail,fixed,launch,projects,architecture,flow,settings,add-project}.png`（含已修复标识）。
 
 ## 5. 对话内使用
 

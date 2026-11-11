@@ -9,14 +9,14 @@ DSH 左侧栏入口 + 整页**代码评审工作台**：把 [alibaba/open-code-r
 每个评审都有实时阶段进度与动态流，点开即可查阅按严重度分组的逐条发现、代码建议 diff 与覆盖率；
 总览页用 GitHub 风格热力图呈现最近一年的提交与评审节奏，并统计最近评审过的项目与热点模块。
 
-![评审中心总览](../../docs/screenshots/code-review-overview.png)
-![评审详情](../../docs/screenshots/code-review-detail.png)
-![项目架构图谱](../../docs/screenshots/code-review-architecture.png)
-![信息流业务链路](../../docs/screenshots/code-review-flow.png)
-![最近评审](../../docs/screenshots/code-review-reviews.png)
-![项目与模块统计](../../docs/screenshots/code-review-projects.png)
-![新建评审](../../docs/screenshots/code-review-launch.png)
-![设置与引擎状态](../../docs/screenshots/code-review-settings.png)
+![评审中心总览](screenshots/code-review-overview.png)
+![评审详情](screenshots/code-review-detail.png)
+![项目架构图谱](screenshots/code-review-architecture.png)
+![信息流业务链路](screenshots/code-review-flow.png)
+![最近评审](screenshots/code-review-reviews.png)
+![项目与模块统计](screenshots/code-review-projects.png)
+![新建评审](screenshots/code-review-launch.png)
+![设置与引擎状态](screenshots/code-review-settings.png)
 
 > 实现契约见 [docs/CODE-REVIEW-CONTRACT.zh.md](../../docs/CODE-REVIEW-CONTRACT.zh.md)，
 > 交付与验收记录见 [docs/CODE-REVIEW-DELIVERY.zh.md](../../docs/CODE-REVIEW-DELIVERY.zh.md)。

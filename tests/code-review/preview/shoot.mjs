@@ -4,7 +4,7 @@
 //
 // Boots a tiny static server (Node http, port 7788), loads the preview harness
 // which renders the *real* plugins/dsh-code-review/client.js against the mock
-// host, captures docs/screenshots/code-review-<view>.png (1440x1000, 1x) and
+// host, captures plugins/dsh-code-review/screenshots/code-review-<view>.png (1440x1000, 1x) and
 // runs smoke assertions (no console error, no "undefined" text, heatmap cells,
 // job row → detail navigation).
 
@@ -16,7 +16,7 @@ import { createRequire } from 'node:module';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const ROOT = resolve(__dirname, '../../..');
-const SHOTS = join(ROOT, 'docs/screenshots');
+const SHOTS = join(ROOT, 'plugins/dsh-code-review/screenshots');
 const PORT = 7788;
 const BASE = `http://127.0.0.1:${PORT}/tests/code-review/preview/index.html`;
 
@@ -550,7 +550,7 @@ async function main() {
     ].filter(Boolean).join(' · ');
     console.log(`[${status}] ${result.view}${extra ? ` (${extra})` : ''}${result.issues.length ? `\n         ↳ ${result.issues.join('\n         ↳ ')}` : ''}`);
   }
-  console.log(`\nshots → docs/screenshots/code-review-*.png`);
+  console.log(`\nshots → plugins/dsh-code-review/screenshots/code-review-*.png`);
   if (failed) {
     console.error('\nRESULT: FAIL');
     process.exitCode = 1;

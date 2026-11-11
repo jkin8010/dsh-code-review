@@ -468,7 +468,7 @@ medium #ffd166 / low #6ea8fe; typefaces system-ui + ui-monospace; radii 12-16; r
 running uses a breathing dot + flowing progress; number count-up; heatmap cells stagger in; no neon pile-up.
 
 **Preview self-check**: `tests/code-review/preview/` renders client.js with a mock Snapshot (simulating `__ModuleLoader__`/connection/slots/locale),
-Playwright screenshots to `docs/screenshots/code-review-*.png`, plus key assertions (no console errors, 371 heatmap cells, details open, etc.).
+Playwright screenshots to `plugins/dsh-code-review/screenshots/code-review-*.png`, plus key assertions (no console errors, 371 heatmap cells, details open, etc.).
 
 ---
 

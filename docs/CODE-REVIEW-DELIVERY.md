@@ -2,7 +2,7 @@
 
 English | [简体中文](CODE-REVIEW-DELIVERY.zh.md)
 
-> Plugin package: `plugins/dsh-code-review` (`@jkin8010/dsh-code-review` v0.9.1)
+> Plugin package: `plugins/dsh-code-review` (`@jkin8010/dsh-code-review` v0.9.2)
 > Dependencies: `ocr` (`@alibaba-group/open-code-review`) v1.13.6, `git`, Node 22+
 > Already installed on this machine into the desktop profile; **takes effect after restarting DSH** (see the end of this document).
 
@@ -99,7 +99,7 @@ plugins/dsh-code-review/
 | Architecture/module/information-flow/diff analysis | `node tests/code-review/analyze.test.mjs` | ✅ 8/8 |
 | Real client.js render + screenshots + DOM assertions | `node tests/code-review/preview/shoot.mjs` | ✅ |
 
-Screenshots: `docs/screenshots/code-review-{overview,reviews,detail,fixed,launch,projects,architecture,flow,settings,add-project}.png` (including fixed markers).
+Screenshots: `plugins/dsh-code-review/screenshots/code-review-{overview,reviews,detail,fixed,launch,projects,architecture,flow,settings,add-project}.png` (including fixed markers).
 
 ## 5. In-conversation usage
 
