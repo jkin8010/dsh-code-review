@@ -459,7 +459,12 @@ async function main() {
       left.x === right.x && left.y < right.y + right.h - 0.5 && right.y < left.y + left.h - 0.5
     )));
     const note = document.querySelector('.cr-graph-more');
-    return { height: viewBox[3] || 0, nodes: rects.length, overlaps, note: Boolean(note && note.textContent.includes('每栏最多显示')) };
+    const visibleColumns = new Set(rects.filter((rect) => rect.y + rect.h / 2 <= (viewBox[3] || 0))
+      .map((rect) => Math.round(rect.x))).size;
+    return {
+      height: viewBox[3] || 0, nodes: rects.length, overlaps, visibleColumns,
+      note: Boolean(note && note.textContent.includes('每栏最多显示')),
+    };
   });
   const bigReadable = bigInfo.height > 300 && bigInfo.height <= 700 && bigInfo.nodes > 15 && !bigInfo.overlaps;
   const moreBefore = await page.$$eval('[data-more-kind="entry"]', (nodes) => nodes.length);
@@ -502,11 +507,12 @@ async function main() {
   await page.waitForTimeout(250);
   const fullHeight = await page.$eval('.cr-graph-svg', (element) => Number((element.getAttribute('viewBox') || '').split(/\s+/)[3]));
   const bigOk = bigReadable && fitAllClicked && fullHeight > 900 && bigInfo.note
-    && bigInfo.nodes >= 48 && bigInfo.nodes <= 80 && moreBefore === 1 && moreAfter === 0 && expanded;
+    && bigInfo.nodes >= 48 && bigInfo.nodes <= 80 && bigInfo.visibleColumns >= 2
+    && moreBefore === 1 && moreAfter === 0 && expanded;
   results.push({
     view: 'flow-big',
     ok: bigOk,
-    issues: bigOk ? [] : [`大信息流图布局异常：initialH=${bigInfo.height} fullH=${fullHeight} nodes=${bigInfo.nodes} overlaps=${bigInfo.overlaps} fit=${fitAllClicked} note=${bigInfo.note} moreBefore=${moreBefore} moreAfter=${moreAfter} expanded=${expanded}`],
+    issues: bigOk ? [] : [`大信息流图布局异常：initialH=${bigInfo.height} fullH=${fullHeight} nodes=${bigInfo.nodes} cols=${bigInfo.visibleColumns} overlaps=${bigInfo.overlaps} fit=${fitAllClicked} note=${bigInfo.note} moreBefore=${moreBefore} moreAfter=${moreAfter} expanded=${expanded}`],
   });
   if (!bigOk) failed = true;
 

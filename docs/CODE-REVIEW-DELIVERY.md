@@ -2,7 +2,7 @@
 
 English | [简体中文](CODE-REVIEW-DELIVERY.zh.md)
 
-> Plugin package: `plugins/dsh-code-review` (`@jkin8010/dsh-code-review` v0.8.7)
+> Plugin package: `plugins/dsh-code-review` (`@jkin8010/dsh-code-review` v0.8.8)
 > Dependencies: `ocr` (`@alibaba-group/open-code-review`) v1.13.6, `git`, Node 22+
 > Already installed on this machine into the desktop profile; **takes effect after restarting DSH** (see the end of this document).
 

@@ -8,7 +8,7 @@ window.__ModuleLoader__.load({
     // 1. 常量 / 字典
     // =====================================================================
 
-    const PLUGIN_VERSION = '0.8.7';
+    const PLUGIN_VERSION = '0.8.8';
     const ENDPOINT = 'code-review';
     const PANEL_ID = 'code-review';
     const PANEL_ORDER = 24;
@@ -3355,7 +3355,10 @@ textarea.cr-input{height:auto;min-height:62px;padding:8px 10px;line-height:1.6;r
         // over neighbouring labels (a large project looked like white blocks).
         const available = Math.max(1, list.length - 1);
         const gap = Math.max(FLOW_ROW_HEIGHT, Math.min(200, (height - 130) / available));
-        const startY = height / 2 + 12 - ((list.length - 1) * gap) / 2;
+        // Top-align every column: with a very tall canvas, vertically centering
+        // short columns pushed their first node far below the initial viewport,
+        // so only the entry column was visible.
+        const startY = 92;
         columnTitles.push({ key, x: xs[columnIndex], y: 38, label: FLOW_KIND_META[key].label, color: FLOW_KIND_META[key].color });
         list.forEach((node, index) => {
           positions.set(str(node.id), {
