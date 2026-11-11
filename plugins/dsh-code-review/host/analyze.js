@@ -541,6 +541,18 @@ function resolveSuffix(spec, index, extensions) {
   return null;
 }
 
+function jsCandidates(base, exts) {
+  const clean = String(base ?? '');
+  const without = clean.replace(/\.(?:[cm]?[jt]sx?)$/i, '');
+  const list = [clean];
+  if (without !== clean) list.push(without);
+  for (const extension of exts) {
+    list.push(`${without}${extension}`);
+    list.push(`${without}/index${extension}`);
+  }
+  return list;
+}
+
 function resolveJs(fromPath, spec, index) {
   // Keep a leading `./` intact: normalizeRel would collapse it and turn a
   // relative import into a bare/package specifier.
@@ -551,11 +563,11 @@ function resolveJs(fromPath, spec, index) {
     const base = clean.startsWith('/')
       ? clean.slice(1)
       : posix.normalize(posix.join(dirOf(fromPath), clean));
-    return firstExisting([base, ...exts.map((ext) => base + ext), ...exts.map((ext) => `${base}/index${ext}`)], index.fileSet);
+    return firstExisting(jsCandidates(base, exts), index.fileSet);
   }
   if (clean.startsWith('@/') || clean.startsWith('~/') || clean.startsWith('#/')) {
     const base = clean.slice(2);
-    const hit = firstExisting([base, ...exts.map((ext) => base + ext), ...exts.map((ext) => `${base}/index${ext}`)], index.fileSet);
+    const hit = firstExisting(jsCandidates(base, exts), index.fileSet);
     if (hit) return hit;
     // Fall through to suffix matching for monorepo aliases that map below src/.
   }
@@ -563,7 +575,7 @@ function resolveJs(fromPath, spec, index) {
   // (path alias or workspace package), never node_modules.
   const roots = [clean, `src/${clean}`];
   for (const root of roots) {
-    const hits = extname(root) ? [root] : [root, ...exts.map((ext) => root + ext), ...exts.map((ext) => `${root}/index${ext}`)];
+    const hits = jsCandidates(root, exts);
     const hit = firstExisting(hits, index.fileSet);
     if (hit) return hit;
   }
@@ -2058,8 +2070,23 @@ function extractEntryBody(content, startIndex, lang) {
     }
     return { text: content.slice(startIndex, startIndex + 1200), start: startIndex };
   }
-  const brace = content.indexOf('{', startIndex);
-  if (brace >= 0 && brace - startIndex < 600) {
+  // Register-style handlers can carry middleware/schema objects before the
+  // actual function (`app.get('/x', zValidator(...), async (c) => { ... })`).
+  // Taking the first `{` grabbed the schema object, so no service calls were
+  // found. Prefer the last arrow/function body inside this route's arguments.
+  const lookahead = content.slice(startIndex, Math.min(content.length, startIndex + 6000));
+  const nextRoute = lookahead.slice(1).search(/\n\s*(?:app|router|server|api|route|fastify)\s*\.\s*(?:get|post|put|patch|delete)\s*\(/);
+  const window = nextRoute > 0 ? lookahead.slice(0, nextRoute + 1) : lookahead;
+  const handlers = [...window.matchAll(/(?:=>|function\s*[A-Za-z_$]*\s*\([^)]*\))\s*\{/g)];
+  let brace = -1;
+  if (handlers.length) {
+    const handler = handlers[handlers.length - 1];
+    brace = startIndex + handler.index + handler[0].lastIndexOf('{');
+  } else {
+    brace = content.indexOf('{', startIndex);
+    if (brace - startIndex >= 600) brace = -1;
+  }
+  if (brace >= 0) {
     const end = matchBrace(content, brace);
     if (end > brace) return { text: content.slice(brace, Math.min(end + 1, brace + 12000)), start: brace };
   }
@@ -2325,6 +2352,7 @@ export async function analyzeFlow({ project, files, readFile } = {}) {
       if (services.length >= 4) break;
     }
     for (const binding of bindings) {
+      if (entry.file.endsWith('routes/auth.ts') && entry.line < 120) log.info(`DBG bind ${binding.local} -> ${binding.resolved}`);
       if (services.length >= 4) break;
       if (binding.resolved && binding.resolved !== entry.file && isServicePath(binding.resolved)
         && new RegExp(`\\b${binding.local.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(captured.text)) {
@@ -2635,7 +2663,11 @@ export async function analyzeFlow({ project, files, readFile } = {}) {
   const allNodes = [...nodeMap.values()]
     .map((node) => ({ ...node, risk: riskForNode(node) }))
     .sort((a, b) => (priority[a.kind] ?? 3) - (priority[b.kind] ?? 3) || b.loc - a.loc || a.label.localeCompare(b.label));
-  const keptNodes = allNodes.slice(0, 40);
+  // Keep downstream nodes before filling the cap with entries: the graph is
+  // useless if 40 entries consume the budget and every service/data node is cut.
+  const downstreamNodes = allNodes.filter((node) => node.kind !== 'entry').slice(0, 140);
+  const entryNodesForGraph = allNodes.filter((node) => node.kind === 'entry').slice(0, 120);
+  const keptNodes = [...downstreamNodes, ...entryNodesForGraph].slice(0, 200);
   const keptIds = new Set(keptNodes.map((node) => node.id));
   const allEdges = [...edgeMap.values()];
   const edges = allEdges

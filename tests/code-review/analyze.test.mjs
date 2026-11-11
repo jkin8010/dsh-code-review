@@ -186,6 +186,18 @@ test('flow: monorepo 路径别名仍能解析服务与数据节点', async () =>
   assert.ok(aliasFlow.flows.some((flow) => flow.data.length > 0), 'flow-alias: 链路含数据步骤');
 });
 
+test('flow: 入口超过 40 个时仍保留下游服务/数据节点', async () => {
+  const manyFlow = await analyzeFlow({
+    project: projectOf('flow-alias'),
+    files: [],
+    readFile: READ,
+  });
+  const kinds = new Set(manyFlow.graph.nodes.map((node) => node.kind));
+  assert.ok(manyFlow.graph.nodes.length > 40, 'flow-many: 保留超过 40 个节点');
+  assert.ok(kinds.has('service'), 'flow-many: 入口很多时仍保留 service');
+  assert.ok(kinds.has('data'), 'flow-many: 入口很多时仍保留 data');
+});
+
 test('flow: 入口识别 / 服务链路 / 数据节点 / 缺校验 finding', () => {
   assertAnalysisShape(flow, 'flow');
   assert.ok(flow.graph, 'flow: graph 非空');
