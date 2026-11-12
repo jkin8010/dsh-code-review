@@ -10,17 +10,17 @@
  */
 import assert from 'node:assert/strict';
 import { mkdir, rm } from 'node:fs/promises';
-import { join } from 'node:path';
-import { createStore } from '../../plugins/dsh-code-review/host/store.js';
-import { createJobs } from '../../plugins/dsh-code-review/host/jobs.js';
-import { createSnapshot } from '../../plugins/dsh-code-review/host/snapshot.js';
-import { registerCodeReviewTool, createCodeReviewToolDefinition } from '../../plugins/dsh-code-review/host/tool.js';
-import { normalizeConfig } from '../../plugins/dsh-code-review/host/config.js';
-import { addDays, dateKey, dayList } from '../../plugins/dsh-code-review/host/shared.js';
+import { join, resolve } from 'node:path';
+import { createStore } from '../../host/store.js';
+import { createJobs } from '../../host/jobs.js';
+import { createSnapshot } from '../../host/snapshot.js';
+import { registerCodeReviewTool, createCodeReviewToolDefinition } from '../../host/tool.js';
+import { normalizeConfig } from '../../host/config.js';
+import { addDays, dateKey, dayList } from '../../host/shared.js';
 
 const ROOT = new URL('../../', import.meta.url).pathname;
 const STATE = join(ROOT, 'tests', '.tmp', 'code-review-tool-state');
-const REPO = join(ROOT, 'plugins', 'dsh-code-review');
+const REPO = resolve(ROOT);
 
 await rm(STATE, { recursive: true, force: true });
 await mkdir(STATE, { recursive: true });
@@ -109,7 +109,7 @@ const analyze = {
 };
 
 const config = normalizeConfig({
-  projectRoots: [join(ROOT, 'plugins')],
+  projectRoots: [ROOT],
   defaultProjectPath: REPO,
   stateDir: STATE,
   engine: 'structural',

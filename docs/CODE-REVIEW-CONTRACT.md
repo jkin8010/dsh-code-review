@@ -2,7 +2,7 @@
 
 English | [简体中文](CODE-REVIEW-CONTRACT.zh.md)
 
-Plugin package: `plugins/dsh-code-review` (`@jkin8010/dsh-code-review`).
+Plugin package: this repository root (`@jkin8010/dsh-code-review` v0.9.3).
 Built on [alibaba/open-code-review](https://github.com/alibaba/open-code-review) (`ocr` CLI v1.13+).
 Sidebar entry `sidebar.panellist` (id `code-review`) + full page `main` (key `code-review`).
 The client fetches data over authenticated RPC; the host owns all I/O (git / ocr subprocesses / persistence).
@@ -468,7 +468,7 @@ medium #ffd166 / low #6ea8fe; typefaces system-ui + ui-monospace; radii 12-16; r
 running uses a breathing dot + flowing progress; number count-up; heatmap cells stagger in; no neon pile-up.
 
 **Preview self-check**: `tests/code-review/preview/` renders client.js with a mock Snapshot (simulating `__ModuleLoader__`/connection/slots/locale),
-Playwright screenshots to `plugins/dsh-code-review/screenshots/code-review-*.png`, plus key assertions (no console errors, 371 heatmap cells, details open, etc.).
+Playwright screenshots to `screenshots/code-review-*.png`, plus key assertions (no console errors, 371 heatmap cells, details open, etc.).
 
 ---
 
@@ -476,11 +476,11 @@ Playwright screenshots to `plugins/dsh-code-review/screenshots/code-review-*.png
 
 | path | Owner |
 |---|---|
-| `plugins/dsh-code-review/{index.js,package.json,cordis.patch.yml,icon.svg,README.md}` | Lead |
-| `plugins/dsh-code-review/host/{config,shared,store,snapshot,jobs,prompts}.js` | Lead |
-| `plugins/dsh-code-review/host/{git,ocr}.js` | A |
-| `plugins/dsh-code-review/host/analyze.js` | B |
-| `plugins/dsh-code-review/{client.js,locale/*.json}` + `tests/code-review/preview/**` | C |
+| `{index.js,package.json,cordis.patch.yml,icon.svg,README.md}` (repository root) | Lead |
+| `host/{config,shared,store,snapshot,jobs,prompts}.js` | Lead |
+| `host/{git,ocr}.js` | A |
+| `host/analyze.js` | B |
+| `{client.js,locale/*.json}` + `tests/code-review/preview/**` | C |
 | `tests/code-review/{git-ocr,analyze}*.mjs` | A/B each |
 | `docs/CODE-REVIEW-CONTRACT.md` | Lead (others read-only) |
 

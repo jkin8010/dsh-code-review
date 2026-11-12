@@ -9,7 +9,7 @@ import {
   analyzeDiff,
   analyzeFlow,
   analyzeModule,
-} from '../../plugins/dsh-code-review/host/analyze.js';
+} from '../../host/analyze.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURES = join(HERE, 'fixtures');

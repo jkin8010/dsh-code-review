@@ -12,13 +12,13 @@ import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { apply, name } from '../../plugins/dsh-code-review/index.js';
-import { projectId } from '../../plugins/dsh-code-review/host/config.js';
-import { findingKey } from '../../plugins/dsh-code-review/host/shared.js';
+import { apply, name } from '../../index.js';
+import { projectId } from '../../host/config.js';
+import { findingKey } from '../../host/shared.js';
 
 const ROOT = new URL('../../', import.meta.url).pathname;
 const STATE = join(ROOT, 'tests', '.tmp', 'code-review-host-state');
-const PLUGIN = join(ROOT, 'plugins', 'dsh-code-review');
+const PLUGIN = join(ROOT);
 const TEMP_REPO = join(ROOT, 'tests', '.tmp', 'diffdemo');
 const OCR = '/Users/jkin/.nvm/versions/node/v24.15.0/bin/ocr';
 
@@ -70,7 +70,7 @@ const ctx = {
 
 assert.equal(name, 'qise-code-review');
 apply(ctx, {
-  projectRoots: [join(ROOT, 'plugins'), join(ROOT, 'tests', '.tmp')],
+  projectRoots: [join(ROOT, 'tests', '.tmp')],
   defaultProjectPath: PLUGIN,
   stateDir: STATE,
   engine: 'structural',

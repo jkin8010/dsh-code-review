@@ -29,12 +29,12 @@ import { fileURLToPath } from 'node:url';
 
 import {
   changedFiles, discoverProjects, gitHeatmap, gitMeta, inspectProject, moduleTree,
-} from '../../plugins/dsh-code-review/host/git.js';
+} from '../../host/git.js';
 import {
   llmTest, preview, probe, probeLlm, runReview,
-} from '../../plugins/dsh-code-review/host/ocr.js';
-import { normalizeConfig } from '../../plugins/dsh-code-review/host/config.js';
-import { addDays, dateKey } from '../../plugins/dsh-code-review/host/shared.js';
+} from '../../host/ocr.js';
+import { normalizeConfig } from '../../host/config.js';
+import { addDays, dateKey } from '../../host/shared.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../..');

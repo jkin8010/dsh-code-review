@@ -15,6 +15,8 @@
 
 ## Archived releases
 
+> 注：早期版本使用 `plugins/dsh-code-review/` 目录结构，该布局后来已扁平化到仓库根目录（当前结构见 README 的仓库结构说明）。以下历史记录保持原样。
+
 ### v0.1.1 — 支持从 Git URL 直接安装
 
 _Released 2026-11-10_

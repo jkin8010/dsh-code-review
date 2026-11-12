@@ -2,7 +2,7 @@
 
 简体中文 | [English](CODE-REVIEW-DELIVERY.md)
 
-> 插件包：`plugins/dsh-code-review`（`@jkin8010/dsh-code-review` v0.9.2）
+> 插件包：本仓库根目录（`@jkin8010/dsh-code-review` v0.9.3）
 > 依赖：`ocr`（`@alibaba-group/open-code-review`）v1.13.6、`git`、Node 22+
 > 本机已安装到 desktop profile；**重启 DSH 后生效**（见文末）。
 
@@ -52,7 +52,8 @@
 ## 3. 架构
 
 ```
-plugins/dsh-code-review/
+.                  仓库根目录 = 插件包（@jkin8010/dsh-code-review）
+  package.json      唯一的 DSH bundle 清单（dsh.bundle → cordis.patch.yml，exports → index/client/locale/icon）
   index.js          组合根：配置、服务引用、store/jobs/snapshot 装配、tool/command/RPC 注册
   client.js         Web 整页 UI（window.__ModuleLoader__ + React.createElement，无构建步骤）
   host/
@@ -75,6 +76,11 @@ plugins/dsh-code-review/
     jobs.js         6 阶段状态机、双引擎合并、去重、统计、取消/重试/持久化
     snapshot.js     快照：项目/热力图/统计/健康/动态（带 TTL 缓存）
   locale/           meta 文案
+  cordis.patch.yml  清单 dsh.bundle 引用的 bundle 描述文件
+  icon.svg          清单导出的插件图标
+  screenshots/      code-review-*.png（预览自检产物）
+  tests/            自测 + Playwright 预览 harness
+  docs/             契约 / 交付说明 / 版本历史
 ```
 
 - RPC 信封与 DSH 管理路由一致：`POST /api/code-review`，`{type:'client-request',...}` → `{type:'server-response', result:{ok,value|error}}`；失败信封始终带 `code/message/details`。
@@ -96,10 +102,10 @@ plugins/dsh-code-review/
 | 已修复 UI（徽章 + 筛选） | `node tests/code-review/preview/shoot.mjs` | ✅ |
 | Host RPC 全链路（真实 git/ocr/analyze + 假 Cordis） | `node tests/code-review/host-selftest.mjs` | ✅ |
 | git/热力图/OCR 适配（真实仓库 + 真实 ocr preview） | `node tests/code-review/git-ocr.test.mjs` | ✅ 33/33 |
-| 架构/模块/信息流/diff 分析 | `node tests/code-review/analyze.test.mjs` | ✅ 8/8 |
+| 架构/模块/信息流/diff 分析 | `node tests/code-review/analyze.test.mjs` | ✅ 10/10 |
 | 真实 client.js 渲染 + 截图 + DOM 断言 | `node tests/code-review/preview/shoot.mjs` | ✅ |
 
-截图：`plugins/dsh-code-review/screenshots/code-review-{overview,reviews,detail,fixed,launch,projects,architecture,flow,settings,add-project}.png`（含已修复标识）。
+截图：`screenshots/code-review-{overview,reviews,detail,fixed,launch,projects,architecture,flow,settings,add-project}.png`（含已修复标识）。
 
 ## 5. 对话内使用
 
@@ -127,7 +133,7 @@ plugins/dsh-code-review/
 
 - `~/.dsh/profiles/desktop/package.json`：新增依赖
   `"@jkin8010/dsh-code-review": "link:/Users/jkin/workspace/jkin8010/dhs-feishu-plugin"`
-  （仓库根 `package.json` 是 bundle 清单，exports 指向 `plugins/dsh-code-review/`）
+  （仓库根 `package.json` 是 bundle 清单，exports 指向根目录的 `index.js` / `client.js` / `locale/` / `icon.svg`）
   和 `dsh.profile.bundles` 末位 `@jkin8010/dsh-code-review`；
 - `~/.dsh/profiles/desktop/node_modules/@jkin8010/dsh-code-review` 已链接；
 - `~/.dsh/profiles/desktop/cordis.patch.yml` 追加插件配置（projectRoots、extraProjects、ocr 选项）。
@@ -138,7 +144,7 @@ plugins/dsh-code-review/
 启用后建议检查：
 
 1. 设置抽屉：OCR 版本应为 `v1.13.6`；LLM 状态为 `delegate`（本机无 OCR Key）或 `configured`。
-2. 总览应出现项目卡与热力图；点「新建 Review」跑一次「代码模块」评审（选 `dsh-code-review/host`），
+2. 总览应出现项目卡与热力图；点「新建 Review」跑一次「代码模块」评审（选 `dsh-code-review` 项目的 `host` 模块），
    观察实时队列、阶段进度与详情页 findings。
 3. 如需 OCR 原生 AI 评审：`ocr config provider` 配置后，设置页「测试 LLM」应通过，引擎自动切到 `ocr`。
 

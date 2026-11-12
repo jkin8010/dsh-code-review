@@ -1,8 +1,8 @@
 [
-  "plugins/dsh-code-review/screenshots/code-review-overview.png",
-  "plugins/dsh-code-review/screenshots/code-review-detail.png",
-  "plugins/dsh-code-review/screenshots/code-review-fixed.png",
-  "plugins/dsh-code-review/screenshots/code-review-architecture.png",
-  "plugins/dsh-code-review/screenshots/code-review-flow.png",
-  "plugins/dsh-code-review/screenshots/code-review-projects.png"
+  "screenshots/code-review-overview.png",
+  "screenshots/code-review-detail.png",
+  "screenshots/code-review-fixed.png",
+  "screenshots/code-review-architecture.png",
+  "screenshots/code-review-flow.png",
+  "screenshots/code-review-projects.png"
 ]

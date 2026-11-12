@@ -1,6 +1,6 @@
 {
   "name": "@jkin8010/dsh-code-review",
-  "version": "0.9.2",
+  "version": "0.9.3",
   "private": true,
   "type": "module",
   "description": "代码评审中心：基于 alibaba/open-code-review 的 DeepSeek Harness 插件，支持当前改动/提交/分支、项目架构、代码模块与信息流业务工作流评审，提供实时进度与动态、GitHub 风格提交热力图与评审统计。",
@@ -25,30 +25,28 @@
     "architecture-review"
   ],
   "exports": {
-    ".": "./plugins/dsh-code-review/index.js",
-    "./client": "./plugins/dsh-code-review/client.js",
-    "./locale/*.json": "./plugins/dsh-code-review/locale/*.json",
-    "./icon": "./plugins/dsh-code-review/icon.svg"
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
   },
   "files": [
-    "plugins/dsh-code-review/index.js",
-    "plugins/dsh-code-review/client.js",
-    "plugins/dsh-code-review/cordis.patch.yml",
-    "plugins/dsh-code-review/host/*.js",
-    "plugins/dsh-code-review/locale/*.json",
-    "plugins/dsh-code-review/icon.svg",
-    "plugins/dsh-code-review/README.md",
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "host/*.js",
+    "locale/*.json",
+    "icon.svg",
     "README.md",
-    "LICENSE",
-    "plugins/dsh-code-review/README.zh.md",
-    "README.zh.md"
+    "README.zh.md",
+    "LICENSE"
   ],
   "engines": {
     "node": ">=22"
   },
   "dsh": {
     "bundle": {
-      "patch": "./plugins/dsh-code-review/cordis.patch.yml"
+      "patch": "./cordis.patch.yml"
     },
     "client": {
       "platform": "web",

@@ -1,4 +1,4 @@
-// Preview harness: boots the *real* plugins/dsh-code-review/client.js against a
+// Preview harness: boots the *real* client.js against a
 // mocked DSH host (module loader, slots, locale, connection.rpc).
 //
 // URL params:
@@ -178,9 +178,9 @@ window.__ModuleLoader__ = {
 function loadClient() {
   return new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = '../../../plugins/dsh-code-review/client.js';
+    script.src = '../../../client.js';
     script.onload = () => resolve();
-    script.onerror = () => reject(new Error('[preview] failed to load plugins/dsh-code-review/client.js'));
+    script.onerror = () => reject(new Error('[preview] failed to load client.js'));
     document.body.appendChild(script);
   });
 }

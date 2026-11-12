@@ -11,12 +11,12 @@
 import assert from 'node:assert/strict';
 import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { createStore } from '../../plugins/dsh-code-review/host/store.js';
-import { createJobs } from '../../plugins/dsh-code-review/host/jobs.js';
-import { createSnapshot } from '../../plugins/dsh-code-review/host/snapshot.js';
-import { createLlmReviewer } from '../../plugins/dsh-code-review/host/llm-review.js';
-import { normalizeConfig } from '../../plugins/dsh-code-review/host/config.js';
-import { addDays, dateKey, dayList } from '../../plugins/dsh-code-review/host/shared.js';
+import { createStore } from '../../host/store.js';
+import { createJobs } from '../../host/jobs.js';
+import { createSnapshot } from '../../host/snapshot.js';
+import { createLlmReviewer } from '../../host/llm-review.js';
+import { normalizeConfig } from '../../host/config.js';
+import { addDays, dateKey, dayList } from '../../host/shared.js';
 
 const ROOT = new URL('../../', import.meta.url).pathname;
 const STATE = join(ROOT, 'tests', '.tmp', 'code-review-delegate-state');
@@ -103,7 +103,7 @@ const llmReviewer = createLlmReviewer({
 });
 
 const config = normalizeConfig({
-  projectRoots: [join(ROOT, 'plugins')],
+  projectRoots: [ROOT],
   defaultProjectPath: REPO,
   stateDir: STATE,
   engine: 'auto',

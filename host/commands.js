@@ -41,7 +41,7 @@ const USAGE = `用法：/code-review <子命令> [@项目路径] [选项]
   /code-review workflow @test/
   /code-review workflow --fix @test/
   /code-review architecture @/Users/me/project
-  /code-review module plugins/dsh-code-review/host --fix
+  /code-review module host --fix
   /code-review module --paths host,client --fix
   /code-review changes --effort high
   /code-review commit abc123
@@ -342,7 +342,7 @@ export function createCodeReviewCommand({
         }
       }
       if (!paths.length) {
-        throw new Error('用法：/code-review module <路径[,路径]> [@项目路径]\n示例：/code-review module host,client --fix\n或：/code-review module --paths plugins/dsh-code-review/host');
+        throw new Error('用法：/code-review module <路径[,路径]> [@项目路径]\n示例：/code-review module host,client --fix\n或：/code-review module --paths host');
       }
       scope.paths = paths;
     }

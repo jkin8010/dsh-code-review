@@ -1,7 +1,7 @@
 /**
  * Deterministic mock data for the standalone client preview.
  *
- * The harness loads the real `plugins/dsh-code-review/client.js` and serves this
+ * The harness loads the real `client.js` and serves this
  * document through a fake `connection.rpc.call`, so the UI is exercised against
  * exactly the shapes in docs/CODE-REVIEW-CONTRACT.md. Nothing here ships with
  * the plugin: it only exists so the page can be rendered and screenshotted

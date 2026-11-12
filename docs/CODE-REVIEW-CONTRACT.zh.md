@@ -2,7 +2,7 @@
 
 简体中文 | [English](CODE-REVIEW-CONTRACT.md)
 
-插件包：`plugins/dsh-code-review`（`@jkin8010/dsh-code-review`）。
+插件包：本仓库根目录（`@jkin8010/dsh-code-review` v0.9.3）。
 基于 [alibaba/open-code-review](https://github.com/alibaba/open-code-review)（`ocr` CLI v1.13+）。
 左侧栏入口 `sidebar.panellist`（id `code-review`）+ 整页 `main`（key `code-review`）。
 Client 通过认证 RPC 取数据，Host 端持有全部 I/O（git / ocr 子进程 / 持久化）。
@@ -467,7 +467,7 @@ medium #ffd166 / low #6ea8fe；字体 system-ui + ui-monospace；圆角 12-16；
 running 用呼吸点 + 进度流动；数字 count-up；热力图格子入场 stagger；不堆砌霓虹。
 
 **预览自检**：`tests/code-review/preview/` 用 mock Snapshot 渲染 client.js（模拟 `__ModuleLoader__`/connection/slots/locale），
-Playwright 截图到 `plugins/dsh-code-review/screenshots/code-review-*.png`，并做关键断言（无 console error、热力图 371 格、详情可打开等）。
+Playwright 截图到 `screenshots/code-review-*.png`，并做关键断言（无 console error、热力图 371 格、详情可打开等）。
 
 ---
 
@@ -475,11 +475,11 @@ Playwright 截图到 `plugins/dsh-code-review/screenshots/code-review-*.png`，�
 
 | 路径 | Owner |
 |---|---|
-| `plugins/dsh-code-review/{index.js,package.json,cordis.patch.yml,icon.svg,README.md}` | Lead |
-| `plugins/dsh-code-review/host/{config,shared,store,snapshot,jobs,prompts}.js` | Lead |
-| `plugins/dsh-code-review/host/{git,ocr}.js` | A |
-| `plugins/dsh-code-review/host/analyze.js` | B |
-| `plugins/dsh-code-review/{client.js,locale/*.json}` + `tests/code-review/preview/**` | C |
+| `{index.js,package.json,cordis.patch.yml,icon.svg,README.md}`（仓库根） | Lead |
+| `host/{config,shared,store,snapshot,jobs,prompts}.js` | Lead |
+| `host/{git,ocr}.js` | A |
+| `host/analyze.js` | B |
+| `{client.js,locale/*.json}` + `tests/code-review/preview/**` | C |
 | `tests/code-review/{git-ocr,analyze}*.mjs` | A/B 各自 |
 | `docs/CODE-REVIEW-CONTRACT.md` | Lead（别人只读） |
 

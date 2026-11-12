@@ -2,7 +2,7 @@
 
 English | [简体中文](CODE-REVIEW-DELIVERY.zh.md)
 
-> Plugin package: `plugins/dsh-code-review` (`@jkin8010/dsh-code-review` v0.9.2)
+> Plugin package: this repository root (`@jkin8010/dsh-code-review` v0.9.3)
 > Dependencies: `ocr` (`@alibaba-group/open-code-review`) v1.13.6, `git`, Node 22+
 > Already installed on this machine into the desktop profile; **takes effect after restarting DSH** (see the end of this document).
 
@@ -52,7 +52,8 @@ Visual: dark code intelligence console, primary teal `#35e0c8`, severity colors 
 ## 3. Architecture
 
 ```
-plugins/dsh-code-review/
+.                   repository root = the plugin package (@jkin8010/dsh-code-review)
+  package.json      the single DSH bundle manifest (dsh.bundle → cordis.patch.yml, exports → index/client/locale/icon)
   index.js          composition root: config, service references, store/jobs/snapshot wiring, tool/command/RPC registration
   client.js         Web full-page UI (window.__ModuleLoader__ + React.createElement, no build step)
   host/
@@ -75,6 +76,11 @@ plugins/dsh-code-review/
     jobs.js         6-stage state machine, dual-engine merge, dedupe, statistics, cancel/retry/persistence
     snapshot.js     Snapshot: project/heatmap/statistics/health/activity (with TTL cache)
   locale/           meta strings
+  cordis.patch.yml  bundle descriptor referenced by the manifest's dsh.bundle
+  icon.svg          plugin icon exported by the manifest
+  screenshots/      code-review-*.png (preview self-check output)
+  tests/            self-tests + Playwright preview harness
+  docs/             contract / delivery notes / release history
 ```
 
 - The RPC envelope matches DSH's admin routes: `POST /api/code-review`, `{type:'client-request',...}` → `{type:'server-response', result:{ok,value|error}}`; the failure envelope always carries `code/message/details`.
@@ -96,10 +102,10 @@ plugins/dsh-code-review/
 | Fixed-state UI (badge + filter) | `node tests/code-review/preview/shoot.mjs` | ✅ |
 | Full Host RPC chain (real git/ocr/analyze + fake Cordis) | `node tests/code-review/host-selftest.mjs` | ✅ |
 | git/heatmap/OCR adapter (real repo + real ocr preview) | `node tests/code-review/git-ocr.test.mjs` | ✅ 33/33 |
-| Architecture/module/information-flow/diff analysis | `node tests/code-review/analyze.test.mjs` | ✅ 8/8 |
+| Architecture/module/information-flow/diff analysis | `node tests/code-review/analyze.test.mjs` | ✅ 10/10 |
 | Real client.js render + screenshots + DOM assertions | `node tests/code-review/preview/shoot.mjs` | ✅ |
 
-Screenshots: `plugins/dsh-code-review/screenshots/code-review-{overview,reviews,detail,fixed,launch,projects,architecture,flow,settings,add-project}.png` (including fixed markers).
+Screenshots: `screenshots/code-review-{overview,reviews,detail,fixed,launch,projects,architecture,flow,settings,add-project}.png` (including fixed markers).
 
 ## 5. In-conversation usage
 
@@ -127,7 +133,7 @@ Completed on this machine for the desktop profile:
 
 - `~/.dsh/profiles/desktop/package.json`: new dependency
   `"@jkin8010/dsh-code-review": "link:/Users/jkin/workspace/jkin8010/dhs-feishu-plugin"`
-  (the repository root `package.json` is the bundle manifest, exports point to `plugins/dsh-code-review/`)
+  (the repository root `package.json` is the bundle manifest; exports point at the root-level `index.js` / `client.js` / `locale/` / `icon.svg`)
   and `@jkin8010/dsh-code-review` as the last entry of `dsh.profile.bundles`;
 - `~/.dsh/profiles/desktop/node_modules/@jkin8010/dsh-code-review` is linked;
 - `~/.dsh/profiles/desktop/cordis.patch.yml` has the plugin config appended (projectRoots, extraProjects, ocr options).
@@ -138,7 +144,7 @@ then refresh the page and the "Code Review Center" appears in the sidebar.
 After enabling, it is worth checking:
 
 1. Settings drawer: the OCR version should be `v1.13.6`; LLM state should be `delegate` (no OCR key on this machine) or `configured`.
-2. Overview should show project cards and the heatmap; click "New Review" and run a "code module" review (pick `dsh-code-review/host`),
+2. Overview should show project cards and the heatmap; click "New Review" and run a "code module" review (pick the `host` module of the `dsh-code-review` project),
    then watch the live queue, stage progress and the findings on the details page.
 3. If you want OCR's native AI review: configure it with `ocr config provider`, then "Test LLM" on the settings page should pass and the engine switches to `ocr` automatically.
 
