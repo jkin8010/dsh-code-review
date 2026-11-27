@@ -55,6 +55,40 @@ const PROVIDER_HOSTS = [
 ];
 
 // ---------------------------------------------------------------------------
+// Windows shim handling
+// ---------------------------------------------------------------------------
+
+/**
+ * npm on Windows installs `ocr` as `ocr.cmd`, and `spawn`/`execFile` hand the
+ * path straight to CreateProcess, which only accepts PE images — a batch file
+ * fails with EINVAL before the callback ever runs. Route shims through
+ * `cmd.exe /d /s /c` so `ocr.command`, PATH discovery and `ocr.bin` all keep
+ * working with the argv contract unchanged.
+ */
+const WINDOWS_SHIM = /\.(cmd|bat)$/i;
+
+/** Quote one argv element for `cmd.exe /c`. */
+function quoteForCmd(value) {
+  const text = String(value ?? '');
+  if (text === '') return '""';
+  if (!/[\s"&|<>^()]/.test(text)) return text;
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+/** `{ file, argv, verbatim }` describing how to launch `binary` with `args`. */
+function spawnTarget(binary, args) {
+  if (process.platform !== 'win32' || !WINDOWS_SHIM.test(String(binary ?? ''))) {
+    return { file: binary, argv: args, verbatim: false };
+  }
+  const command = [binary, ...args].map(quoteForCmd).join(' ');
+  return {
+    file: process.env.ComSpec || 'cmd.exe',
+    argv: ['/d', '/s', '/c', `"${command}"`],
+    verbatim: true,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // small helpers
 // ---------------------------------------------------------------------------
 
@@ -306,14 +340,8 @@ function execCapture(binary, args, { cwd = process.cwd(), env = process.env, tim
       });
       return;
     }
-    execFile(binary, args, {
-      cwd,
-      env,
-      timeout: timeoutMs,
-      maxBuffer: MAX_BUFFER,
-      windowsHide: true,
-      encoding: 'utf8',
-    }, (error, stdout, stderr) => {
+    const target = spawnTarget(binary, args);
+    const onExit = (error, stdout, stderr) => {
       const out = typeof stdout === 'string' ? stdout : '';
       const err = typeof stderr === 'string' ? stderr : '';
       if (!error) {
@@ -335,7 +363,31 @@ function execCapture(binary, args, { cwd = process.cwd(), env = process.env, tim
         error: errorText(error),
         timedOut: reason === 'ETIMEDOUT' || (Boolean(error.killed) && reason !== 'ENOBUFS'),
       });
-    });
+    };
+    try {
+      execFile(target.file, target.argv, {
+        cwd,
+        env,
+        timeout: timeoutMs,
+        maxBuffer: MAX_BUFFER,
+        windowsHide: true,
+        windowsVerbatimArguments: target.verbatim,
+        encoding: 'utf8',
+      }, onExit);
+    } catch (error) {
+      // Launch failures may be thrown synchronously (EINVAL on an unrunnable
+      // path) instead of reaching the callback. Every caller expects a
+      // classified result object, so never let it escape the promise.
+      resolvePromise({
+        ok: false,
+        missing: error?.code === 'ENOENT',
+        code: typeof error?.code === 'number' ? error.code : null,
+        stdout: '',
+        stderr: '',
+        error: errorText(error),
+        timedOut: false,
+      });
+    }
   });
 }
 
@@ -914,13 +966,15 @@ function spawnReview({
     }
 
     const startedAt = Date.now();
+    const target = spawnTarget(binary, args);
     let child;
     try {
-      child = spawn(binary, args, {
+      child = spawn(target.file, target.argv, {
         cwd,
         env,
         stdio: ['ignore', 'pipe', 'pipe'],
         windowsHide: true,
+        windowsVerbatimArguments: target.verbatim,
       });
     } catch (error) {
       resolvePromise({ ...base, spawnError: true, error: errorText(error) });

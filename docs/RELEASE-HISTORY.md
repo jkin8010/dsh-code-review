@@ -13,6 +13,12 @@
 
 ## Unreleased
 
+### Windows：ocr 命令发现与执行
+
+- `host/config.js`：Windows 下按 `ocr.exe` / `ocr.cmd` / `ocr.bat` 扫描（不再把 npm 附带的无扩展名 POSIX 垫片当成可执行文件），并兜底探测 `%APPDATA%\npm` 与 `%ProgramFiles%\nodejs`；`ocr.command` 若指向无扩展名垫片，自动升级为同目录的 `.exe` / `.cmd`。
+- `host/ocr.js`：`.cmd` / `.bat` 统一经 `cmd.exe /d /s /c` 启动；`execFile` 的同步抛错（`EINVAL`）收敛为失败结果，不再冒出未捕获异常。
+- 测试：新增 `tests/code-review/ocr-spawn.test.mjs`；四个 selftest 改用 `fileURLToPath` 构造 `ROOT`，修复 Windows 上路径拼成 `D:\D:\...` 的问题。
+
 ### scope 统一回 `@jkin8010`
 
 - npm 包名与 GitHub 仓库统一为 `@jkin8010/dsh-code-review` / `github.com/jkin8010/dsh-code-review`（中途曾试过 `@qise-tech` 前缀，已回退）。

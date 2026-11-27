@@ -152,11 +152,32 @@ function executable(path) {
   }
 }
 
+/**
+ * Candidate `ocr` paths in discovery order.
+ *
+ * Windows needs its own name set: `npm i -g` writes `ocr.cmd` beside an
+ * extension-less POSIX shim, and neither is directly runnable — the shim is
+ * stat-able, so it used to win the scan and then fail at spawn time with the
+ * misleading "未找到 ocr CLI". The bare name is therefore never a candidate
+ * there; the platform `.exe` wins first, then the `.cmd`/`.bat` shims that
+ * `ocr.js` routes through cmd.exe.
+ */
 function pathCandidates() {
   const home = homedir();
+  const windows = process.platform === 'win32';
+  const names = windows ? ['ocr.exe', 'ocr.cmd', 'ocr.bat'] : ['ocr'];
   const list = [];
-  for (const dir of String(process.env.PATH ?? '').split(delimiter)) {
-    if (dir) list.push(join(dir, 'ocr'));
+  const pushDir = (dir) => {
+    if (!dir) return;
+    for (const name of names) list.push(join(dir, name));
+  };
+  for (const dir of String(process.env.PATH ?? '').split(delimiter)) pushDir(dir);
+  if (windows) {
+    // The npm prefix is not always on PATH when the host was launched from a
+    // GUI shell, so probe the well-known install roots explicitly.
+    pushDir(process.env.APPDATA ? join(process.env.APPDATA, 'npm') : '');
+    pushDir(process.env.ProgramFiles ? join(process.env.ProgramFiles, 'nodejs') : '');
+    return list;
   }
   list.push(
     join(home, '.local', 'bin', 'ocr'),
@@ -186,6 +207,21 @@ function pathCandidates() {
  */
 const ocrBinaryCache = new Map();
 
+/**
+ * Swap npm's extension-less shim for its runnable sibling.
+ *
+ * `where ocr` lists the POSIX shim first, so the absolute path users copy out
+ * of it (and out of the `ocr.command` hint) is exactly the one Windows cannot
+ * execute. When such a path has no extension, prefer `.exe`, then `.cmd`/`.bat`.
+ */
+function preferRunnable(path) {
+  if (process.platform !== 'win32' || !path || /\.[a-z0-9]+$/i.test(path)) return path;
+  for (const ext of ['.exe', '.cmd', '.bat']) {
+    if (executable(`${path}${ext}`)) return `${path}${ext}`;
+  }
+  return path;
+}
+
 export function findOcrBinary(config) {
   const configured = expandHome(config?.ocr?.command);
   // Include the running Node binary so an nvm switch (and its new ocr) invalidates the cache.
@@ -214,6 +250,8 @@ export function findOcrBinary(config) {
     // Last resort: bare name, let execvp search PATH at spawn time.
     if (!resolved) resolved = 'ocr';
   }
+  // Only absolute hits are rewritten; a bare name must keep PATH semantics.
+  if (resolved && isAbsolute(resolved)) resolved = preferRunnable(resolved);
   ocrBinaryCache.set(cacheKey, resolved);
   return resolved;
 }

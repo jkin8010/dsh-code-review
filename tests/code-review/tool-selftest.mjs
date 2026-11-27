@@ -11,6 +11,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createStore } from '../../host/store.js';
 import { createJobs } from '../../host/jobs.js';
 import { createSnapshot } from '../../host/snapshot.js';
@@ -18,7 +19,7 @@ import { registerCodeReviewTool, createCodeReviewToolDefinition } from '../../ho
 import { normalizeConfig } from '../../host/config.js';
 import { addDays, dateKey, dayList } from '../../host/shared.js';
 
-const ROOT = new URL('../../', import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const STATE = join(ROOT, 'tests', '.tmp', 'code-review-tool-state');
 const REPO = resolve(ROOT);
 

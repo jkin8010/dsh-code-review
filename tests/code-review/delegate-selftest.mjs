@@ -11,6 +11,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createStore } from '../../host/store.js';
 import { createJobs } from '../../host/jobs.js';
 import { createSnapshot } from '../../host/snapshot.js';
@@ -18,7 +19,7 @@ import { createLlmReviewer } from '../../host/llm-review.js';
 import { normalizeConfig } from '../../host/config.js';
 import { addDays, dateKey, dayList } from '../../host/shared.js';
 
-const ROOT = new URL('../../', import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const STATE = join(ROOT, 'tests', '.tmp', 'code-review-delegate-state');
 // 插件实现已扁平化到仓库根（v0.9.3），评审目标就是仓库自身。
 const REPO = ROOT.replace(/\/$/, '');

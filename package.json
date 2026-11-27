@@ -18,7 +18,7 @@
     "registry": "https://registry.npmjs.org"
   },
   "scripts": {
-    "test": "node tests/code-review/engine-selftest.mjs && node tests/code-review/delegate-selftest.mjs && node tests/code-review/tool-selftest.mjs && node tests/code-review/analyze.test.mjs",
+    "test": "node tests/code-review/engine-selftest.mjs && node tests/code-review/delegate-selftest.mjs && node tests/code-review/tool-selftest.mjs && node tests/code-review/analyze.test.mjs && node tests/code-review/ocr-spawn.test.mjs",
     "test:full": "npm test && node tests/code-review/host-selftest.mjs && node tests/code-review/git-ocr.test.mjs",
     "pack:check": "npm pack --dry-run"
   },

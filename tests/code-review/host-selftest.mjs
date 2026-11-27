@@ -12,11 +12,12 @@ import assert from 'node:assert/strict';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { apply, name } from '../../index.js';
 import { projectId } from '../../host/config.js';
 import { findingKey } from '../../host/shared.js';
 
-const ROOT = new URL('../../', import.meta.url).pathname;
+const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const STATE = join(ROOT, 'tests', '.tmp', 'code-review-host-state');
 const PLUGIN = join(ROOT).replace(/\/+$/, '');
 const TEMP_REPO = join(ROOT, 'tests', '.tmp', 'diffdemo');
